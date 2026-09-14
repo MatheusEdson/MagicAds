@@ -1,0 +1,23 @@
+# Modelo de `.scrub-clientes.local`. Copie e preencha:
+#
+#     cp .scrub-clientes.local.exemplo .scrub-clientes.local
+#
+# O arquivo preenchido esta no .gitignore. Os nomes dos seus clientes ficam
+# na sua maquina e nunca entram no repositorio -- que e exatamente o que este
+# scrub existe pra garantir. Escrever a sua carteira dentro de um script
+# publico seria vazar o que ele deveria proteger.
+#
+# Um nome por linha. `#` e comentario, linha em branco e ignorada. A busca e
+# case-insensitive e so casa palavra inteira, entao "Acme" nao reprova
+# "Acmestore" nem "acmeacme" -- mas tambem nao pega "Acme-Store". Se o nome
+# aparece de varios jeitos, liste os varios jeitos.
+#
+# Nome curto que tambem e palavra comum em portugues vai gerar alarme falso, e
+# alarme falso e como scrub morre: primeiro irrita, depois ninguem le a saida.
+# Prefira a forma que distingue ("Acme Odontologia", nao "Acme").
+#
+# Vale para nome de cliente, apelido interno, dominio e nome de projeto dele.
+
+Acme Pneus
+acmepneus.com.br
+Cliente Dois Ltda

@@ -96,13 +96,26 @@ achou "customer id cru"          '\b[0-9]{10}\b'
 LISTA="${MAGICADS_SCRUB_CLIENTES:-.scrub-clientes.local}"
 if [ -f "$LISTA" ]; then
     CLIENTES=$(grep -vE '^[[:space:]]*(#|$)' "$LISTA" | tr '\n' '|' | sed 's/|$//')
+    # \b nas duas pontas. Sem isso um nome curto vira alarme em palavra
+    # comum: "Sabia" na lista reprovava a frase "Sabiam o que aconselhar" do
+    # CHANGELOG. Alarme falso e como scrub morre -- primeiro irrita, depois
+    # ninguem le a saida, e ai ele nao protege mais nada.
+    [ -n "$CLIENTES" ] && CLIENTES="\\b($CLIENTES)\\b"
 else
     CLIENTES=""
 fi
 if [ -n "$CLIENTES" ]; then
     achou "nome de cliente"      "$CLIENTES"
 else
-    echo "AVISO: nome de cliente NAO checado (sem $LISTA)."
+    # Dois motivos diferentes, e confundi-los custa caro: arquivo ausente e
+    # esperado no primeiro clone; arquivo presente e sem nome nenhum quer dizer
+    # que alguem editou e o esvaziou sem perceber.
+    if [ -f "$LISTA" ]; then
+        echo "AVISO: nome de cliente NAO checado. $LISTA existe mas nao tem"
+        echo "       nome nenhum (so comentario ou linha em branco)."
+    else
+        echo "AVISO: nome de cliente NAO checado: $LISTA nao existe."
+    fi
     echo "       Um nome por linha nesse arquivo. Ele e ignorado pelo git, entao"
     echo "       os nomes ficam na sua maquina. Regex generico nao sabe que"
     echo "       \"Acme Pneus\" e cliente seu -- so essa lista sabe."
@@ -139,6 +152,25 @@ if [ -z "$faltou" ]; then
 else
     echo "FALHOU: autoteste -- o scrub NAO enxerga:$faltou. Nao confie nele."
     falhou=1
+fi
+
+# 4a isca, so quando a lista existe. A regra de nome de cliente e a UNICA que
+# depende de um arquivo de fora, entao e a unica que pode ficar silenciosamente
+# vazia: lista so com comentarios, encoding errado, um "|" sobrando. Aqui ela e
+# obrigada a disparar com o primeiro nome da propria lista.
+if [ -n "$CLIENTES" ]; then
+    primeiro=$(grep -vE '^[[:space:]]*(#|$)' "$LISTA" | head -1)
+    isca2=".scrub-autoteste-cliente.tmp"
+    trap 'rm -f "$isca" "$isca2"' EXIT INT TERM
+    printf '%s\n' "conta do $primeiro" > "$isca2"
+    if git grep --untracked -qIiE "$CLIENTES" -- "$isca2" 2>/dev/null; then
+        echo "ok: autoteste da lista (isca com o 1o nome do proprio arquivo)"
+    else
+        echo "FALHOU: autoteste -- a lista de clientes nao pega nem o proprio"
+        echo "        primeiro nome dela. A regra esta morta; nao confie nela."
+        falhou=1
+    fi
+    rm -f "$isca2"
 fi
 rm -f "$isca"
 

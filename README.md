@@ -52,6 +52,7 @@ cd MagicAds
 # 0. a trava que impede voce de empurrar segredo sem querer. Trinta segundos,
 #    e e a unica protecao que roda ANTES do push (a CI so roda depois).
 cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+cp .scrub-clientes.local.exemplo .scrub-clientes.local   # e ponha os seus clientes
 
 # 1. cofre: um arquivo por cliente, 600
 mkdir -p ~/.magicads/tokens

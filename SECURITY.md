@@ -54,6 +54,21 @@ cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 
 ⚠️ **Crie o `.scrub-clientes.local`**, um nome por linha, com os clientes reais da sua carteira. Regex genérico não sabe que "Acme Pneus" é cliente seu, e é esse o vazamento que dói: não é o token, é o dado do cliente. O arquivo está no `.gitignore` de propósito: escrever os nomes dentro do `scrub.sh`, num repo público, seria vazar exatamente o que ele existe para proteger. Sem esse arquivo o scrub avisa, em vez de fingir que checou.
 
+```bash
+cp .scrub-clientes.local.exemplo .scrub-clientes.local
+```
+
+A busca casa **palavra inteira** e ignora maiúscula. Isso é de propósito: sem essa
+regra, um nome de 5 letras da lista casou com uma palavra maior dentro do próprio
+CHANGELOG e travou o push por causa de uma frase em português. Alarme falso é como
+um scrub morre — primeiro irrita, depois ninguém lê a saída, e aí ele não protege
+mais nada. A contrapartida é que "Acme" não pega "Acme-Store": liste as variações
+que você usa.
+
+Essa é a única regra que depende de um arquivo de fora, então é a única que pode
+ficar calada sem ninguém notar. Por isso o autoteste planta uma isca com o
+**primeiro nome da sua própria lista** e exige que o scrub a encontre.
+
 ## Se um token vazou
 
 Nesta ordem:

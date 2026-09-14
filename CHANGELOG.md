@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.5.1 — 2026-09-14
+
+A regra de nome de cliente, que a 1.5.0 tinha acabado de tirar de dentro do
+script, precisou de duas correções no primeiro uso real.
+
+- **Alarme falso.** A busca era por substring, então nome curto na lista
+  reprovava palavra comum. No primeiro uso real um nome de 5 letras casou com
+  uma palavra maior **dentro do próprio CHANGELOG**, e o push travou por causa
+  de uma frase em português. Agora casa palavra inteira: "Acme" não reprova mais
+  "Acmestore". Alarme falso é como um scrub morre — primeiro irrita, depois
+  ninguém lê a saída, e aí ele não protege mais nada.
+
+- **Isca número 4.** Essa é a única regra que depende de um arquivo de fora, ou
+  seja, a única que pode ficar calada sem ninguém notar — lista só com
+  comentário, encoding errado, um "|" sobrando. O autoteste passou a plantar uma
+  isca com o **primeiro nome da sua própria lista** e a exigir que o scrub
+  encontre. E o aviso de lista ausente agora separa “não existe” de “existe e
+  está vazia”, que são problemas diferentes.
+
+- `.scrub-clientes.local.exemplo` versionado, e `cp` dele no passo 0 do README.
+  O primeiro rascunho desse modelo citava um cliente de verdade numa linha de
+  explicação, e o próprio scrub barrou o commit.
 ## 1.5.0 — 2026-09-14
 
 Auditoria antes de mandar o repo pra alguem: um agente de segurança e um de
