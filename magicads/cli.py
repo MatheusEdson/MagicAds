@@ -32,7 +32,7 @@ O CICLO COMPLETO
 USO
   python -m magicads init
   python -m magicads clientes
-  python -m magicads cliente acme "Acme Pneus" --nicho auto --cidade Uberlandia
+  python -m magicads cliente acme "Acme Pneus" --nicho auto --cidade "Sao Paulo"
   python -m magicads conta acme meta act_000000000000000 "Acme - Meta"
   python -m magicads diag acme
   python -m magicads get  acme me/adaccounts fields=name,account_status

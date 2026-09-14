@@ -19,7 +19,7 @@
     "geo": {
       "geo_locations": {
         "custom_locations": [
-          { "latitude": -18.918, "longitude": -48.277, "radius": 10, "distance_unit": "kilometer" }
+          { "latitude": -23.561, "longitude": -46.656, "radius": 10, "distance_unit": "kilometer" }
         ]
       }
     },

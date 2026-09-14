@@ -62,7 +62,7 @@ export MAGICADS_SUPABASE_KEY=...          # service key, só no servidor
 python -m magicads init
 
 # 4. a carteira mora no banco, não em arquivo versionado
-python -m magicads cliente acme "Acme Pneus" --nicho auto --cidade Uberlandia
+python -m magicads cliente acme "Acme Pneus" --nicho auto --cidade "Sao Paulo"
 python -m magicads conta acme meta act_000000000000000
 
 # 5. dá pra subir? (os 6 portões)
