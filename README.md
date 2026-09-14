@@ -52,7 +52,11 @@ cd MagicAds
 # 0. a trava que impede voce de empurrar segredo sem querer. Trinta segundos,
 #    e e a unica protecao que roda ANTES do push (a CI so roda depois).
 cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
-cp .scrub-clientes.local.exemplo .scrub-clientes.local   # e ponha os seus clientes
+cp .scrub-clientes.local.exemplo .scrub-clientes.local
+#    ^ vem vazio de proposito. Abra e ponha os nomes dos SEUS clientes, um por
+#      linha. Enquanto estiver vazio o scrub avisa que nao checou, em vez de
+#      fingir que checou. O arquivo e ignorado pelo git: os nomes nao saem
+#      da sua maquina.
 
 # 1. cofre: um arquivo por cliente, 600
 mkdir -p ~/.magicads/tokens
@@ -193,7 +197,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória. `./scripts/historico.sh` varre o **histórico inteiro**, que é outra pergunta: segredo que entrou num commit e saiu no seguinte some da árvore e continua no pack.
 
 ```bash
-python -m unittest discover -s tests   # 116 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 118 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.6.2 — 2026-09-14
+
+**O passo 0 do README fazia as duas guardas reprovarem no minuto um.** Num clone
+limpo, `cp .scrub-clientes.local.exemplo .scrub-clientes.local` copiava um modelo
+com nomes **ativos**, e "Acme Pneus" é o exemplo usado no próprio README, no
+SECURITY e no `cli.py`. Resultado: o primeiro `./scripts/scrub.sh` de quem acabou
+de clonar dizia `NAO EMPURRE`, e o `historico.sh` dizia `HISTORICO SUJO`,
+apontando pra **documentação do próprio repo**.
+
+Alarme falso no minuto um é a forma mais rápida de alguém desinstalar a trava
+mentalmente, e é irônico que tenha acontecido justo aqui, duas versões depois de
+a 1.5.1 consertar um falso positivo pelo mesmo motivo.
+
+Os nomes de exemplo vão comentados. O modelo continua ensinando o formato, e o
+scrub avisa que **não checou** até o dono da cópia pôr os clientes dele. Dois
+testes seguram: o modelo não pode ter linha ativa, e não pode virar arquivo
+vazio.
+
+Achado rodando o caminho do recém-chegado num clone novo do GitHub, do zero,
+colando o README linha por linha.
+
+118 testes.
 ## 1.6.1 — 2026-09-14
 
 O `pre-push` era a **terceira** lista de regras. Ele tinha o próprio regex

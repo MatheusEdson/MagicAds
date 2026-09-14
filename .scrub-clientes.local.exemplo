@@ -17,7 +17,14 @@
 # Prefira a forma que distingue ("Acme Odontologia", nao "Acme").
 #
 # Vale para nome de cliente, apelido interno, dominio e nome de projeto dele.
+# ---------------------------------------------------------------------------
+# APAGUE O `#` e ponha os SEUS. Os exemplos vao comentados de proposito:
+# "Acme Pneus" e o nome de exemplo usado no README, no SECURITY e no proprio
+# CLI deste repo, entao ativa-lo faria o scrub reprovar a documentacao no
+# primeiro `./scripts/scrub.sh` do clone novo. Alarme falso no minuto um e a
+# forma mais rapida de alguem desinstalar a trava mentalmente.
+# ---------------------------------------------------------------------------
 
-Acme Pneus
-acmepneus.com.br
-Cliente Dois Ltda
+# Acme Pneus
+# acmepneus.com.br
+# Cliente Dois Ltda

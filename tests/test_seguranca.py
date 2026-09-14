@@ -510,6 +510,28 @@ class WorkflowNaoPedeEscrita(unittest.TestCase):
         self.assertIn("fetch-depth: 0", texto)
 
 
+class OModeloNaoPodeReprovarOProprioRepo(unittest.TestCase):
+    """O passo 0 do README manda copiar o modelo. Se o modelo vier com nome
+    ativo, o primeiro `./scripts/scrub.sh` do clone novo reprova -- e o que ele
+    reprova e a DOCUMENTACAO do proprio repo ("Acme Pneus" mora no README, no
+    SECURITY e no cli.py). Alarme falso no minuto um e a forma mais rapida de
+    alguem desinstalar a trava mentalmente."""
+
+    def test_o_modelo_vem_sem_nome_ativo(self):
+        modelo = RAIZ / ".scrub-clientes.local.exemplo"
+        vivas = [l for l in modelo.read_text(encoding="utf-8").splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        self.assertEqual(vivas, [],
+                         "o modelo tem nome ativo: %r" % (vivas,))
+
+    def test_o_modelo_ainda_ensina_o_formato(self):
+        # comentar tudo nao pode virar arquivo vazio: quem copia precisa ver
+        # como se escreve uma linha.
+        texto = (RAIZ / ".scrub-clientes.local.exemplo").read_text(encoding="utf-8")
+        self.assertIn("# Acme Pneus", texto)
+        self.assertIn("um nome por linha", texto.lower())
+
+
 class AsRegrasMoramNumLugarSo(unittest.TestCase):
     """Duas listas de regras em dois scripts garantem que uma hora uma regra
     entra numa e nao na outra -- e isso falha calado."""
