@@ -136,6 +136,81 @@ class PostValidaAntesDeCriar(Isolado):
         self.assertNotIn("execution_options", self.capturado["campos"])
 
 
+class ApagarNaoPodeMentir(Isolado):
+    """`{"success": true}` nao e prova de que apagou.
+
+    O `subir` imprimia, quando falhava no meio, um comando de limpeza que NAO
+    limpava: `post <id> _method=DELETE`. A Graph API aceita o POST, responde
+    `success: true` e deixa o objeto vivo (medido em 14/09/2026, com 8s de espera
+    e dois GET). O estrago e pior que nao ter comando nenhum: voce risca o orfao
+    da lista e ele fica la, na conta do cliente.
+    """
+
+    def setUp(self):
+        Isolado.setUp(self)
+        self.visto = []
+        self._chamada = cli.chamada
+        self._token = cli.token
+
+        def falsa(metodo, caminho, campos):
+            self.visto.append((metodo, caminho))
+            if metodo == "GET":
+                # antes do DELETE esta vivo; depois, apagado.
+                morto = any(m == "DELETE" for m, _ in self.visto)
+                return {"id": caminho, "name": "campanha",
+                        "status": "DELETED" if morto else "PAUSED"}, None
+            return {"success": True}, None
+
+        cli.chamada = falsa
+        cli.token = lambda c: ("cliente", TOKEN_FALSO)
+
+    def tearDown(self):
+        cli.chamada = self._chamada
+        cli.token = self._token
+        Isolado.tearDown(self)
+
+    def test_sem_executar_nao_apaga(self):
+        cli.cmd_remover(["cliente", "120000000000000000"])
+        self.assertNotIn("DELETE", [m for m, _ in self.visto])
+
+    def test_com_executar_usa_delete_de_verdade(self):
+        cli.cmd_remover(["cliente", "120000000000000000", "--executar"])
+        self.assertIn("DELETE", [m for m, _ in self.visto])
+
+    def test_confere_relendo_o_objeto(self):
+        # Um GET antes (pra mostrar o que vai morrer) e um DEPOIS (a prova).
+        cli.cmd_remover(["cliente", "120000000000000000", "--executar"])
+        self.assertEqual([m for m, _ in self.visto], ["GET", "DELETE", "GET"])
+
+    def test_sai_1_se_o_objeto_sobreviveu(self):
+        # A Meta dizendo `success` com o objeto de pe: e exatamente o caso que
+        # existia, e ele nao pode passar calado.
+        cli.chamada = lambda metodo, caminho, campos: (
+            ({"id": caminho, "name": "c", "status": "PAUSED"}, None) if metodo == "GET"
+            else ({"success": True}, None))
+        with self.assertRaises(SystemExit) as e:
+            cli.cmd_remover(["cliente", "120000000000000000", "--executar"])
+        self.assertEqual(e.exception.code, 1)
+
+    def test_a_limpeza_do_subir_aponta_pro_comando_que_funciona(self):
+        from magicads import subir
+        saida = []
+        _diz = subir.diz
+        subir.diz = lambda *a: saida.append(" ".join(str(x) for x in a))
+        try:
+            subir.limpeza([("campanha", "120000000000000001"),
+                           ("conjunto", "120000000000000002")])
+        finally:
+            subir.diz = _diz
+        texto = "\n".join(saida)
+        self.assertNotIn("_method=DELETE", texto)
+        self.assertIn("magicads remover", texto)
+        # do mais novo pro mais velho: apagar a campanha primeiro deixa o resto orfao.
+        # (so a parte dos comandos: a lista de cima esta na ordem em que criou)
+        ordens = texto[texto.index("Pra remover"):]
+        self.assertLess(ordens.index("120000000000000002"), ordens.index("120000000000000001"))
+
+
 class Cofre(Isolado):
     def setUp(self):
         Isolado.setUp(self)

@@ -148,6 +148,28 @@ class Montagem(unittest.TestCase):
         _, conj, _, _ = self.monta(BOA)
         self.assertEqual(conj["daily_budget"], "5000")
 
+    def test_abo_manda_budget_sharing_explicito(self):
+        """Sem este campo a Meta RECUSA a campanha inteira, e recusa mal.
+
+        Erro 100 / 4834011. O `message` diz so "Invalid parameter"; o motivo real
+        so aparece em `error_user_title`. Foi o primeiro erro da primeira vez que
+        o `subir --executar` rodou contra conta de verdade (14/09/2026), e como
+        todas as receitas do repo poem a verba no CONJUNTO, isso derrubava 100%
+        das subidas na primeira chamada.
+
+        `false` de proposito: `true` faz a Meta repartir ate 20% da verba entre
+        os conjuntos, acabando com a separacao por loja ou praca.
+        """
+        camp, _, _, _ = self.monta(BOA)
+        self.assertEqual(camp["is_adset_budget_sharing_enabled"], "false")
+
+    def test_cbo_nao_manda_budget_sharing(self):
+        # Com verba na campanha o campo nao se aplica: quem reparte e o CBO.
+        r = copy.deepcopy(BOA)
+        r["campanha"]["verba_diaria"] = 20000
+        camp, _, _, _ = self.monta(r)
+        self.assertNotIn("is_adset_budget_sharing_enabled", camp)
+
     def test_cbo_tira_a_verba_do_conjunto(self):
         # Verba nos dois lugares e erro de conta garantido.
         r = copy.deepcopy(BOA)

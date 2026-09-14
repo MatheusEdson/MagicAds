@@ -166,6 +166,17 @@ COMANDOS = [
                   "tambem e o que a Meta devolve sob rate limit.",
     },
     {
+        "nome": "remover",
+        "uso": "python -m magicads remover <cliente> <id> --executar",
+        "portao": HUMANO,
+        "faz": "apaga o objeto de verdade (HTTP DELETE) e RELE por GET pra provar que "
+               "foi. Nao use `post <id> _method=DELETE`: a Graph devolve "
+               "{'success': true} e o objeto continua vivo.",
+        "devolve": "status=DELETED conferido, ou sai 1 dizendo que NAO apagou.",
+        "quando": "limpar orfao de uma subida que falhou no meio. Apagar nao tem "
+                  "desfazer: proponha, nao rode.",
+    },
+    {
         "nome": "ativar",
         "uso": "python -m magicads ativar <cliente> <id> --executar",
         "portao": HUMANO,

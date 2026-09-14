@@ -24,10 +24,10 @@ USO
   python -m magicads subir receitas/local-whatsapp.json
   python -m magicads subir receitas/local-whatsapp.json --executar
 """
-import base64
 import copy
 import json
 import os
+import re
 import sys
 
 from .comum import (GRAPH, diz, erro_da_meta, guarda_segredo, http, http_arquivo,
@@ -168,8 +168,22 @@ def monta(r, objetivo, otimizacao, destino):
         "special_ad_categories": json.dumps(camp.get("categorias_especiais") or []),
     }
     if camp.get("verba_diaria"):
+        # CBO: a verba mora na campanha e ela reparte entre os conjuntos.
         p_campanha["daily_budget"] = str(int(camp["verba_diaria"]))
         p_campanha["bid_strategy"] = camp.get("estrategia") or "LOWEST_COST_WITHOUT_CAP"
+    else:
+        # ABO: a verba mora no conjunto. Desde 2026 a Meta RECUSA a campanha sem
+        # este campo, e recusa mal: `message` diz so "Invalid parameter", e o
+        # motivo real so aparece em `error_user_title`. Visto ao vivo em
+        # 14/09/2026, na primeira vez que o `subir --executar` rodou de verdade:
+        #
+        #   100 / 4834011  "E necessario especificar True ou False no campo
+        #                   is_adset_budget_sharing_enabled"
+        #
+        # `false` de proposito: com `true` a Meta reparte ate 20% do orcamento
+        # entre os conjuntos, e ai acaba a separacao por loja, praca ou unidade
+        # -- que costuma ser a unica razao de ter mais de um conjunto.
+        p_campanha["is_adset_budget_sharing_enabled"] = "false"
 
     alvo = copy.deepcopy(conj["geo"])
     if conj.get("idade"):
@@ -373,7 +387,7 @@ def limpeza(criados):
     diz("")
     diz("Pra remover, do mais novo pro mais velho:")
     for tipo, ident in reversed(criados):
-        diz("   python -m magicads post <cliente> %s _method=DELETE --executar" % ident)
+        diz("   python -m magicads remover <cliente> %s --executar" % ident)
 
 
 def resumo(criados, token):
@@ -391,8 +405,8 @@ def resumo(criados, token):
 def sobe_midia(argv, tipo):
     """Sobe imagem ou video pra biblioteca da conta e devolve o identificador.
 
-    Sao dois endpoints e duas formas de envio: `/adimages` aceita base64 num
-    campo comum, `/advideos` quer multipart. O id do video que sai DAQUI e o que
+    Sao dois endpoints, os dois em multipart. O nome do campo vira o nome da
+    imagem na biblioteca da conta. O id do video que sai DAQUI e o que
     serve pra montar publico de visualizacao depois -- o arquivo no seu disco
     nao existe pra Meta.
     """
@@ -420,9 +434,19 @@ def sobe_midia(argv, tipo):
         diz("dizendo que o video nao esta disponivel, espere e repita -- nao suba de novo.")
         return 0
 
-    with open(arquivo, "rb") as fh:
-        bruto = base64.b64encode(fh.read()).decode("ascii")
-    resp = chama("%s/adimages" % conta, {"bytes": bruto}, tok)
+    # Multipart, com o nome do arquivo no campo. Duas razoes, e a segunda so
+    # apareceu rodando ao vivo:
+    #
+    #   1. O NOME DO CAMPO vira o nome da imagem na biblioteca da conta. Com o
+    #      caminho de base64 o campo TEM que se chamar `bytes` (trocar o nome
+    #      derruba o upload com 100/2490361, "arquivo de imagem invalido"), e ai
+    #      toda imagem da conta se chama "bytes" -- a biblioteca deixa de servir
+    #      pra achar qualquer coisa, e voce nao sabe qual hash e qual criativo.
+    #   2. Multipart aceita o nome do arquivo, e a imagem nasce chamada
+    #      `oferta-agosto.jpg` em vez de `bytes`.
+    campo = re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(arquivo)) or "imagem.jpg"
+    resp = http_arquivo("%s/%s/adimages" % (GRAPH, conta),
+                        {"access_token": tok}, campo, arquivo)
     imagens = resp.get("images") or {}
     for nome, dado in imagens.items():
         diz("imagem_hash: %s   (%s)" % (dado.get("hash"), nome))

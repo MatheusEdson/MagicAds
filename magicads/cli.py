@@ -27,6 +27,7 @@ O CICLO COMPLETO
   etl --dias 7               enche a serie
   relatorio                  le a serie em formato de decisao
   pausar / ativar            o freio e o acelerador (`pausar --tudo` = freio geral)
+  remover <cliente> <id>     apaga de verdade e prova por GET (limpar orfao)
 
 USO
   python -m magicads init
@@ -121,8 +122,13 @@ def chamada(metodo, caminho, campos):
     campos = dict(campos)
     campos["access_token"] = TOK_ATUAL[0]
     dados = urllib.parse.urlencode(campos).encode("utf-8")
-    if metodo == "GET":
-        req = urllib.request.Request("%s/%s?%s" % (API, caminho, dados.decode("utf-8")))
+    if metodo in ("GET", "DELETE"):
+        # DELETE vai pela query string, sem corpo. A Graph API NAO honra o
+        # `_method=DELETE` dentro de um POST: ela responde `{"success": true}` e
+        # nao apaga nada. Medido ao vivo em 14/09/2026, com 8s de espera e dois
+        # GET de conferencia -- o objeto continuava PAUSED.
+        req = urllib.request.Request("%s/%s?%s" % (API, caminho, dados.decode("utf-8")),
+                                     method=metodo)
     else:
         req = urllib.request.Request("%s/%s" % (API, caminho), data=dados, method="POST")
     try:
@@ -348,7 +354,7 @@ def cmd_diag(cliente):
         print("     campanha primeiro e rode o diag de novo, que ai a sonda roda.")
 
     if prontas and paginas and zap is True:
-        print("\n  PODE SUBIR. Monte com `post`, que valida antes de criar.")
+        print("\n  PODE SUBIR. Use `subir <receita.json>`: ensaia antes e nasce PAUSED.")
     else:
         print("\n  NAO SUBA AINDA: resolva o que esta FALTA acima.")
         print("  Metade dos itens acima e acao do CLIENTE, nao sua. Mande a lista pra ele.")
@@ -386,6 +392,56 @@ def cmd_chamada(metodo, argv):
         print("\nERRO: %s" % erro_legivel(e))
         sys.exit(1)
     print(limpa(json.dumps(d, ensure_ascii=False, indent=2)))
+
+
+def cmd_remover(argv):
+    """Apaga um objeto e PROVA que apagou.
+
+    Existe porque o caminho obvio nao funciona: `_method=DELETE` num POST
+    devolve `{"success": true}` com o objeto vivo. Comando que mente sobre ter
+    limpado e pior que comando que nao existe -- voce risca da lista e o orfao
+    fica la, na conta do cliente.
+
+    Portao HUMANO: apagar nao tem desfazer barato. O agente propoe, quem roda
+    e voce.
+    """
+    if not argv:
+        sys.exit("uso: python -m magicads remover <cliente> <id> [--executar]")
+    if len(argv) < 2:
+        sys.exit("faltou o id: python -m magicads remover %s <id> --executar" % argv[0])
+    cliente, ident = argv[0], argv[1]
+    executar = "--executar" in argv
+    nome, tok = token(cliente)
+    usa(tok)
+
+    antes, e = chamada("GET", ident, {"fields": "id,name,status"})
+    if e:
+        print("nao consegui ler %s: %s" % (ident, erro_legivel(e)))
+        sys.exit(1)
+    print("%s  %s  status=%s" % (antes.get("id"), antes.get("name") or "(sem nome)",
+                                 antes.get("status")))
+    if antes.get("status") == "DELETED":
+        print("ja estava apagado. Nada a fazer.")
+        return
+    if not executar:
+        print("\nISTO APAGA DE VERDADE em %s, e nao tem desfazer." % nome)
+        print("Se e isso mesmo: python -m magicads remover %s %s --executar" % (cliente, ident))
+        return
+
+    d, e = chamada("DELETE", ident, {})
+    if e:
+        print("\nERRO: %s" % erro_legivel(e))
+        sys.exit(1)
+
+    # `success: true` nao e prova: foi exatamente isso que o caminho quebrado
+    # devolvia. A prova e reler o objeto.
+    depois, e2 = chamada("GET", ident, {"fields": "id,status"})
+    if e2 or (depois or {}).get("status") != "DELETED":
+        print("\nA Meta respondeu %s, mas o objeto continua %s."
+              % (limpa(json.dumps(d)), (depois or {}).get("status", "ilegivel")))
+        print("NAO considere apagado. Confira no gerenciador.")
+        sys.exit(1)
+    print("apagado. status=DELETED, conferido por GET.")
 
 
 def contas_meta_do_cliente(cliente, nome, argv):
@@ -666,6 +722,8 @@ def main():
         cmd_chamada("GET", resto)
     elif c == "post":
         cmd_chamada("POST", resto)
+    elif c == "remover":
+        cmd_remover(resto)
     elif c == "pausar":
         cmd_status(resto, "PAUSED")
     elif c == "ativar":
