@@ -188,7 +188,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
 
 ```bash
-python -m unittest discover -s tests   # 93 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 100 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 
@@ -203,13 +203,14 @@ copia não desconfia.
 |---|---|
 | `init`, `cliente`, `conta` — a carteira | ✅ funciona |
 | `diag` — os 6 portões | ✅ funciona, **provado em conta real (22 contas)** |
-| `subir` + receitas por tipo de conta | ✅ funciona |
+| `subir` + receitas por tipo de conta | ✅ funciona, **provado em conta real** (campanha criada, conferida e apagada) |
 | `get`, `post`, `pausar`, `ativar`, `imagem` | ✅ funciona |
+| `remover` — apaga e prova por GET | ✅ funciona, **provado em conta real** |
 | `pausar --tudo` — freio geral | ✅ funciona |
 | `contrato` + fluxos por plataforma | ✅ pronto |
 | Vídeo e posicionamento no `subir` | ✅ funciona |
-| ETL Meta + Google, idempotente | ✅ funciona |
-| `relatorio` — portfólio, campanha, mudas | ✅ funciona |
+| ETL Meta + Google, idempotente | ✅ funciona, **provado gravando em Postgres real** (3 rodadas, 16 linhas, sem duplicar) |
+| `relatorio` — portfólio, campanha, mudas | ✅ funciona, **lido do banco de verdade** |
 | Agentes Gandalf, 4 tipos de conta + porteiro | ✅ prontos |
 | Instagram | ✅ **não era canal, era posicionamento** — já sobe |
 | Google Ads: subir pela API | 🚧 depois (hoje lê; subir é na interface) |

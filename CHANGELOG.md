@@ -1,5 +1,71 @@
 # Changelog
 
+## 1.4.0 — 2026-09-14
+
+Segunda rodada ao vivo, agora **escrevendo**: ETL gravando num Postgres de
+verdade e `subir --executar` criando campanha de verdade. Os dois caminhos
+nunca tinham rodado fora de teste. Os dois quebraram.
+
+O padrão se repetiu: **o que falha ao vivo não é o que os testes cobrem, é o
+que a Meta responde.** Um teste com API de mentira devolve o que você imaginou
+que ela devolve, então ele confirma o seu modelo mental em vez de corrigi-lo.
+
+### Corrigido
+
+- **O `subir --executar` falhava na primeira chamada, sempre.** A Meta recusa
+  campanha ABO (verba no conjunto) sem `is_adset_budget_sharing_enabled`
+  explícito, e recusa mal: `message` diz só "Invalid parameter", e o motivo real
+  só aparece em `error_user_title`.
+  - `100 / 4834011`. Como **todas** as receitas do repo põem a verba no conjunto,
+    isso derrubava 100% das subidas — o `subir` inteiro era decorativo.
+  - Vai `false` de propósito: com `true` a Meta reparte até 20% da verba entre
+    os conjuntos, e acaba a separação por loja, praça ou unidade, que costuma ser
+    a única razão de ter mais de um conjunto.
+
+- **O comando de limpeza não limpava, e dizia que sim.** Quando o `subir` falha
+  no meio, ele imprime como remover o que ficou de pé. O comando impresso era
+  `post <id> _method=DELETE`, e a Graph API responde `{"success": true}` **sem
+  apagar nada** (medido com 8s de espera e dois GET: o objeto continuava
+  `PAUSED`).
+  - É pior que não ter comando: você risca o órfão da lista e ele fica lá, na
+    conta do cliente, até alguém reparar semanas depois.
+  - Agora existe **`remover <cliente> <id> --executar`**: HTTP DELETE de verdade,
+    e a prova é **reler o objeto por GET** — `success: true` não é prova, foi
+    exatamente o que o caminho quebrado devolvia. Sai em código 1 se o objeto
+    sobreviveu. Portão **HUMANO**: apagar não tem desfazer.
+
+- **Toda imagem da conta se chamava `bytes`.** O upload ia em base64, e o nome do
+  campo vira o nome da imagem na biblioteca. Com 50 criativos, nenhum deles dá
+  pra achar.
+  - Trocar o nome do campo no base64 **derruba o upload** (`100 / 2490361`,
+    "arquivo de imagem inválido"). O caminho que funciona é multipart, que já
+    existia no repositório para vídeo. Agora a imagem nasce com o nome do arquivo.
+
+- `diag` terminava mandando montar com `post`; manda usar `subir`, que ensaia
+  antes e nasce `PAUSED`.
+
+### Provado ao vivo
+
+- **ETL gravando**: schema aplicado num Postgres limpo, 16 linhas gravadas, e
+  **três rodadas seguidas continuam 16 linhas** — a chave primária é a chave de
+  idempotência, e agora isso está medido, não argumentado. `relatorio` leu do
+  banco e fechou com o mesmo número.
+- **Ciclo completo do `subir`**: campanha + conjunto + criativo + anúncio criados
+  de verdade, todos `PAUSED`, conferidos por `GET`, e apagados com `remover`.
+
+### Aviso sobre limpeza
+
+`DELETE /act_<id>/adimages?hash=...` responde `{"success": true}` e **não apaga a
+imagem** (conferido 20s depois: `status` continua `ACTIVE`), tenha ela sido usada
+por algum criativo ou não. Imagem de teste se apaga na biblioteca do
+Gerenciador, na mão. O `remover` do MagicAds cobre campanha, conjunto, anúncio e
+criativo, que é onde mora o estrago.
+
+### Testes
+
+100 (eram 93). Os novos travam exatamente o que quebrou: campanha ABO sem o
+campo, e o comando de limpeza voltar a apontar para `_method=DELETE`.
+
 ## 1.3.0 — 2026-09-14
 
 Primeira rodada **contra conta real** (22 contas, só leitura). Achou dois bugs
