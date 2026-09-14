@@ -514,16 +514,23 @@ class AsRegrasMoramNumLugarSo(unittest.TestCase):
     """Duas listas de regras em dois scripts garantem que uma hora uma regra
     entra numa e nao na outra -- e isso falha calado."""
 
-    def test_scrub_e_historico_usam_o_mesmo_regras_sh(self):
-        for nome in ("scrub.sh", "historico.sh"):
-            texto = (RAIZ / "scripts" / nome).read_text(encoding="utf-8")
+    # os TRES: scrub (arvore), historico (todo commit) e o hook (o que esta
+    # indo agora). O hook ja teve a propria listinha de regex.
+    FERRAMENTAS = ("scripts/scrub.sh", "scripts/historico.sh",
+                   "scripts/hooks/pre-push")
+
+    def test_as_tres_ferramentas_usam_o_mesmo_regras_sh(self):
+        for nome in self.FERRAMENTAS:
+            texto = (RAIZ / nome).read_text(encoding="utf-8")
             self.assertIn("regras.sh", texto, "%s nao sourceia as regras" % nome)
 
-    def test_nenhum_dos_dois_redefine_as_regras(self):
-        for nome in ("scrub.sh", "historico.sh"):
-            texto = (RAIZ / "scripts" / nome).read_text(encoding="utf-8")
-            self.assertNotIn("REGRAS=(", texto,
-                             "%s redefine REGRAS; a lista tem que ser uma so" % nome)
+    def test_nenhuma_delas_redefine_as_regras(self):
+        for nome in self.FERRAMENTAS:
+            texto = (RAIZ / nome).read_text(encoding="utf-8")
+            vivas = [l for l in texto.splitlines()
+                     if l.strip() and not l.strip().startswith("#")]
+            cria = [l for l in vivas if "REGRAS=(" in l and "REGRAS=()" not in l]
+            self.assertFalse(cria, "%s monta a propria lista de regras" % nome)
 
     def test_permitido_nao_libera_token_por_conter_sequencia_de_manual(self):
         """`*1234567890*` solto liberava um token de 40 caracteres que por

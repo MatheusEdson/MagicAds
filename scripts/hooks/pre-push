@@ -9,7 +9,7 @@
 
 raiz="$(git rev-parse --show-toplevel)"
 
-if [ ! -x "$raiz/scripts/scrub.sh" ] && [ ! -f "$raiz/scripts/scrub.sh" ]; then
+if [ ! -f "$raiz/scripts/scrub.sh" ]; then
     echo "pre-push: scripts/scrub.sh nao existe. Deixando passar."
     exit 0
 fi
@@ -22,22 +22,41 @@ bash "$raiz/scripts/scrub.sh" || scrub_ok=1
 # commit seguinte some da arvore e CONTINUA no pack -- e o push leva o pack.
 # Num repo publico isso e definitivo: vazou, e apagar depois nao desfaz.
 # Entao aqui olhamos tambem o que esta indo agora.
+#
+# As regras vem de scripts/regras.sh, as MESMAS do scrub e da varredura de
+# historico. Este hook ja teve a propria listinha de regex, e listinha paralela
+# e como uma regra entra num lugar e some do outro sem ninguem notar.
 hist_ok=0
+if [ -f "$raiz/scripts/regras.sh" ]; then
+    . "$raiz/scripts/regras.sh"
+elif [ -z "${REGRAS+x}" ]; then
+    echo "pre-push: scripts/regras.sh nao existe; so a arvore foi lida."
+    REGRAS=()
+fi
+
 if base=$(git rev-parse --verify --quiet "@{u}" 2>/dev/null); then
     if [ -n "$(git log --format=%H "$base"..HEAD 2>/dev/null)" ]; then
-        achado=$(git log -p "$base"..HEAD 2>/dev/null |
-                 grep -nEi '^\+.*(EAA[A-Za-z0-9]{20,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY)' |
-                 grep -vE 'x{8,}|0{8,}' || true)
-        if [ -n "$achado" ]; then
-            echo
-            echo "pre-push: SEGREDO num COMMIT que esta indo agora."
-            echo "$achado" | head -5 | sed 's/^/    /'
-            echo "    Tirar da arvore NAO resolve: o commit vai junto no pack."
-            hist_ok=1
-        fi
+        # so as linhas ADICIONADAS pelos commits que estao indo agora
+        adicionado=$(git log -p "$base"..HEAD 2>/dev/null | grep '^+' || true)
+        for regra in "${REGRAS[@]:-}"; do
+            [ -n "$regra" ] || continue
+            titulo=${regra%%|*}; rx=${regra#*|}
+            while IFS= read -r trecho; do
+                [ -n "$trecho" ] || continue
+                permitido "$trecho" && continue
+                if [ "$hist_ok" -eq 0 ]; then
+                    echo
+                    echo "pre-push: achado num COMMIT que esta indo agora."
+                    echo "    Tirar da arvore NAO resolve: o commit vai junto no pack."
+                fi
+                echo "    [$titulo] $trecho"
+                hist_ok=1
+            done <<< "$(printf '%s' "$adicionado" | grep -aoiE "$rx" 2>/dev/null | sort -u)"
+        done
     fi
 else
     echo "pre-push: sem upstream ainda; so a arvore de trabalho foi lida."
+    echo "          Antes do primeiro push publico, rode ./scripts/historico.sh"
 fi
 
 if [ "$scrub_ok" -eq 0 ] && [ "$hist_ok" -eq 0 ]; then
@@ -46,6 +65,6 @@ fi
 
 echo
 echo "PUSH BLOQUEADO. Achei segredo ou dado de cliente."
-echo "Corrija e tente de novo. Se for falso positivo, ajuste scripts/scrub.sh"
+echo "Corrija e tente de novo. Se for falso positivo, ajuste scripts/regras.sh"
 echo "em vez de usar --no-verify: a proxima pessoa vai tropecar no mesmo ponto."
 exit 1

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.1 — 2026-09-14
+
+O `pre-push` era a **terceira** lista de regras. Ele tinha o próprio regex
+(`EAA...` e chave privada, só isso) e o próprio filtro de placeholder, ou seja,
+tudo que a 1.6.0 acabou de unificar existia em dobro no lugar mais crítico: a
+última trava antes do repo virar público. Nome de cliente, conta de anúncio, DSN
+com senha e caminho de máquina **passavam** por ele.
+
+Agora ele sourceia `scripts/regras.sh` como os outros dois, e aplica as 13
+regras às linhas adicionadas pelos commits que estão indo naquele push. Teste
+novo cobre as três ferramentas, não mais duas.
+
+Medido num clone: token num commit, removido no commit seguinte, `git push`
+→ `PUSH BLOQUEADO`, com a classe e o trecho na tela.
+
+116 testes.
 ## 1.6.0 — 2026-09-14
 
 `scripts/historico.sh`: varre **todo blob de todo commit**, mais mensagem, nome
