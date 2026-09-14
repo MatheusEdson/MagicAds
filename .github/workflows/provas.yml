@@ -46,6 +46,21 @@ jobs:
       - uses: actions/checkout@v4
       - run: bash scripts/scrub.sh
 
+  historico:
+    name: nem no historico
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # SEM isto o checkout traz 1 commit, e a varredura assinaria
+          # "historico limpo" sem ter visto historico nenhum. O script
+          # recusa clone raso justamente por isso, entao a falta daqui
+          # aparece como erro, nao como verde falso.
+          fetch-depth: 0
+      # Segredo que entrou num commit e saiu no seguinte some da arvore e
+      # continua no pack. O scrub acima nao ve; este ve.
+      - run: bash scripts/historico.sh
+
   receitas:
     name: as receitas de exemplo sobem
     runs-on: ubuntu-latest

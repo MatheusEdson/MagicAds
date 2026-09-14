@@ -190,10 +190,10 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 3. ⚠️ **`validate_only` não protege em `/campaigns`.** A Meta cria de verdade nesse endpoint, com ou sem a flag. Em conjunto e anúncio, protege. O `subir` ensaia o conjunto antes de valer, e avisa na hora.
 4. Cofre com um arquivo por cliente, `chmod 600`. Perder um não é perder todos.
 5. **Falha não vira zero.** Se a conta falhar no ETL, nada é escrito pra ela: zero por erro de rede vira "a campanha parou" no relatório.
-6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
+6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória. `./scripts/historico.sh` varre o **histórico inteiro**, que é outra pergunta: segredo que entrou num commit e saiu no seguinte some da árvore e continua no pack.
 
 ```bash
-python -m unittest discover -s tests   # 112 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 116 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 

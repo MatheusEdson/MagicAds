@@ -1,5 +1,54 @@
 # Changelog
 
+## 1.6.0 — 2026-09-14
+
+`scripts/historico.sh`: varre **todo blob de todo commit**, mais mensagem, nome
+e e-mail de autor. É outra pergunta que o scrub não responde — segredo que entrou
+num commit e saiu no seguinte some da árvore e **continua no pack**, e o push
+leva o pack. Num repo público isso é definitivo: vazou, e apagar depois não
+desfaz.
+
+Rodado neste repo: **183 blobs, 15 commits. Limpo.** Nenhum segredo, nenhum
+identificador real, nenhum nome de cliente, nem em blob, nem em mensagem de
+commit, nem em nome ou e-mail de autor.
+
+### As regras agora moram num lugar só
+
+`scripts/regras.sh`, sourceado pelos dois. Duas listas em dois scripts garantem
+que uma hora uma regra entra numa e não na outra, e isso não falha barulhento:
+falha calado, dizendo “limpo” sobre o que nunca olhou. Teste novo impede que
+qualquer um dos dois redefina `REGRAS`.
+
+### Três jeitos de assinar verde sem ter olhado, todos fechados
+
+- **A própria varredura mentiu na primeira versão.** Imprimiu 7 achados e
+  concluiu “LIMPO”: `... | verifica` roda em subshell, e a variável de estado
+  setada lá dentro não volta pro pai. Agora o veredito sai de um arquivo.
+- **Clone raso.** `--depth 1` e o checkout padrão do GitHub Actions trazem
+  **um** commit; a varredura leria a árvore de hoje e assinaria “histórico
+  limpo” sem ter visto histórico nenhum. Agora recusa, e o job da CI usa
+  `fetch-depth: 0`.
+- **Isca própria.** Ferramenta que roda raro é onde regressão mora por meses.
+  Antes de varrer, ela passa uma isca pelo mesmo caminho da varredura de
+  verdade; se não acender, aborta.
+
+### O buraco que a isca abriu
+
+Plantando `EAA<token>1234567890` num commit e removendo no seguinte, a varredura
+disse **LIMPO** sobre um token que estava lá. Causa: `*1234567890*` solto na
+lista de exceções liberava **qualquer coisa que contivesse** a sequência —
+inclusive um token de 40 caracteres que a tivesse no meio. Ancorado. É a mesma
+família do bug da 1.5.0: exceção larga demais desarma a regra inteira.
+
+### Outros
+
+- Faixas de documentação (RFC 5737) na lista de exceções, e a isca de IP do
+  autoteste com o literal partido — assim o scrub voltou a **se ler**. Só
+  `regras.sh` fica de fora, porque o conteúdo dele é, por definição, os padrões.
+- DSN cuja senha é a própria palavra “senha” passa a ser tratada como
+  placeholder. Troca estreita e consciente: `:Xk9#2p@` continua reprovando.
+
+116 testes.
 ## 1.5.2 — 2026-09-14
 
 O resto da lista da auditoria. Nada aqui vazou nada; são os pontos em que o

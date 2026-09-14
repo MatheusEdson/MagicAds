@@ -41,8 +41,24 @@ No painel do app Meta, Configurações Avançadas. Com ele ligado, as chamadas d
 ## Antes de cada push
 
 ```bash
-./scripts/scrub.sh
+./scripts/scrub.sh       # a árvore de trabalho, antes de todo push
+./scripts/historico.sh   # todo blob de todo commit, mais mensagens e autores
 ```
+
+São duas perguntas diferentes. O `scrub` lê o que está na sua pasta agora.
+Segredo que entrou num commit e **saiu no commit seguinte** some da árvore e
+continua no pack — e o push leva o pack. Num repo público isso é definitivo:
+vazou, e apagar depois não desfaz. O `historico.sh` é pra rodar uma vez antes
+de abrir o repo, e de novo antes de mandar pra alguém.
+
+As regras dos dois moram num arquivo só, `scripts/regras.sh`. Duas listas em
+dois scripts garantem que uma hora uma regra entra numa e não na outra, e isso
+não falha barulhento: falha calado, dizendo “limpo” sobre o que nunca olhou.
+
+Os dois **recusam** em vez de assinar verde quando não têm como olhar: o scrub
+planta iscas e exige encontrá-las; a varredura aborta em clone raso (`--depth 1`
+e o checkout padrão do GitHub Actions trazem **um** commit) e aborta se a
+própria isca dela não acender.
 
 Nove checagens: token da Meta, chave longa, chave de serviço, chave privada, conta de anúncio, id longo, MCC, nome de cliente e telefone. Sai `1` quando acha algo.
 

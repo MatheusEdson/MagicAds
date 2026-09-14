@@ -498,6 +498,47 @@ class WorkflowNaoPedeEscrita(unittest.TestCase):
         self.assertIn("contents: read", texto)
         self.assertNotIn("contents: write", texto)
 
+    def test_varredura_de_historico_nao_roda_em_clone_raso(self):
+        """O job que varre o historico PRECISA de fetch-depth: 0.
+
+        O checkout padrao do Actions traz um commit so. Sem essa linha o job
+        passaria verde tendo lido a arvore de hoje e nenhum historico, que e
+        exatamente o carimbo falso que a ferramenta existe pra nao dar."""
+        yml = RAIZ / ".github" / "workflows" / "provas.yml"
+        texto = yml.read_text(encoding="utf-8")
+        self.assertIn("historico.sh", texto)
+        self.assertIn("fetch-depth: 0", texto)
+
+
+class AsRegrasMoramNumLugarSo(unittest.TestCase):
+    """Duas listas de regras em dois scripts garantem que uma hora uma regra
+    entra numa e nao na outra -- e isso falha calado."""
+
+    def test_scrub_e_historico_usam_o_mesmo_regras_sh(self):
+        for nome in ("scrub.sh", "historico.sh"):
+            texto = (RAIZ / "scripts" / nome).read_text(encoding="utf-8")
+            self.assertIn("regras.sh", texto, "%s nao sourceia as regras" % nome)
+
+    def test_nenhum_dos_dois_redefine_as_regras(self):
+        for nome in ("scrub.sh", "historico.sh"):
+            texto = (RAIZ / "scripts" / nome).read_text(encoding="utf-8")
+            self.assertNotIn("REGRAS=(", texto,
+                             "%s redefine REGRAS; a lista tem que ser uma so" % nome)
+
+    def test_permitido_nao_libera_token_por_conter_sequencia_de_manual(self):
+        """`*1234567890*` solto liberava um token de 40 caracteres que por
+        acaso contivesse a sequencia. Descoberto plantando a isca
+        `EAA...1234567890`: a varredura disse "LIMPO" sobre um token real."""
+        regras = (RAIZ / "scripts" / "regras.sh").read_text(encoding="utf-8")
+        # so as linhas VIVAS: o comentario que explica a remocao cita o padrao
+        # antigo, e um teste que le comentario testa prosa, nao comportamento.
+        vivas = [l for l in regras.splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        self.assertFalse([l for l in vivas if "*1234567890*" in l],
+                         "o padrao solto voltou pra dentro do permitido()")
+        self.assertTrue([l for l in vivas if "1234567890|0123456789)" in l],
+                        "a versao ancorada sumiu; o placeholder vai dar alarme falso")
+
 
 if __name__ == "__main__":
     unittest.main()
