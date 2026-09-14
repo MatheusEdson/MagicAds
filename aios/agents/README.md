@@ -87,9 +87,10 @@ roda sempre, porque não sai da máquina — e é com os payloads na tela que a
 conversa sobre a campanha acontece.
 
 E não prometem o que não existe — nem acusam a plataforma do que é limitação
-nossa. Google Ads eles leem e planejam, e executar é na interface **porque esta
-ferramenta não implementou**, não porque a API falte. Google Business é o caso
-oposto: a API de produto não existe, então eles listam em ordem de impacto e não
-publicam.
+nossa. No Google Ads eles sobem Search por receita, pausam e removem; e a
+receita é **recusada** sem negativas e sem geo, antes de falar com o Google.
+PMax, Shopping e extensão continuam na interface, e isso eles dizem assim —
+não como "o Google não deixa". Google Business é o caso oposto: a API de
+produto não existe, então eles listam em ordem de impacto e não publicam.
 LinkedIn ainda não está no ETL, e eles dizem isso em vez de inventar um
 `--so-linkedin`.

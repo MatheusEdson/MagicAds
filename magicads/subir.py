@@ -20,6 +20,12 @@ SEGURANCA
    Orfao silencioso e como se descobre, tres semanas depois, que tem campanha
    sua rodando em conta de cliente.
 
+CANAL
+A receita diz `"canal": "meta"` ou `"canal": "google"`. Sem o campo, meta --
+toda receita que ja existe e da Meta. A de Google mora em subir_google.py, que
+e outra anatomia (palavra-chave, correspondencia, negativa) e nao cabia aqui
+sem virar um `if` dentro de cada funcao.
+
 USO
   python -m magicads subir receitas/local-whatsapp.json
   python -m magicads subir receitas/local-whatsapp.json --executar
@@ -477,6 +483,20 @@ def main(argv):
             r = json.load(fh)
         except ValueError as e:
             sys.exit("receita nao e JSON valido: %s" % e)
+
+    # Despacho por canal. `canal` ausente = meta, porque toda receita que ja
+    # existe e da Meta e quebrar arquivo de quem ja usa nao vale a economia de
+    # uma linha.
+    canal = (r.get("canal") or "meta").lower()
+    if canal == "google":
+        from . import subir_google
+        try:
+            return subir_google.sobe(r, argv)
+        except subir_google.Recusa as e:
+            diz("RECEITA RECUSADA: %s" % e)
+            return 1
+    if canal != "meta":
+        sys.exit("canal %r nao existe. Use \"meta\" ou \"google\"." % canal)
 
     try:
         objetivo, otimizacao, destino, avisos = valida(r)

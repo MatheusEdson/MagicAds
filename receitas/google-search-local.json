@@ -1,0 +1,72 @@
+{
+  "_leia": "Google Ads / Rede de Pesquisa. Negocio LOCAL que quer telefone e visita. Troque os ids por zeros pelos seus. Nasce PAUSED: revise e ligue na interface.",
+  "_atencao": "`grupo.negativas` e OBRIGATORIO aqui, e a recusa acontece antes de falar com o Google. Search sem negativa compra 'gratis', 'como fazer', 'vaga de emprego' e o nome dos seus concorrentes. Lista vazia nao conta.",
+
+  "canal": "google",
+  "cliente": "acme",
+  "conta": "000-000-0000",
+
+  "campanha": {
+    "nome": "[C01] Search · marca + servico · Sao Paulo",
+    "verba_diaria": 30000000,
+    "_verba": "em MICROS da moeda da conta. R$ 30,00/dia = 30000000. Errar a casa aqui e gastar mil vezes mais, entao o codigo exige o numero explicito e nao converte de reais.",
+
+    "geo": { "paises": ["BR"] },
+    "_geo": "obrigatorio. Search sem geo entrega no mundo inteiro, e isso queima verba tao rapido quanto falta de negativa, so que mais silenciosamente: a metrica parece 'so' ruim, em vez de errada. Pra cidade ou raio, use {\"ids\": [1001773]} com a constante geografica crua.",
+
+    "_rede": "o codigo desliga Parceiros de Pesquisa e Display. Os dois vem LIGADOS por padrao na interface, e e assim que Search vira Display sem ninguem ter decidido isso.",
+    "_lance": "Manual CPC de proposito. Lance automatico precisa de historico de conversao pra ter o que otimizar; numa campanha que nasce hoje ele gasta pra aprender, e quem paga a aula e o cliente. Troque depois que houver conversao entrando."
+  },
+
+  "grupo": {
+    "nome": "[G01] servico + cidade",
+    "lance_micros": 2000000,
+
+    "palavras": [
+      { "texto": "conserto de geladeira sao paulo", "correspondencia": "PHRASE" },
+      { "texto": "assistencia tecnica geladeira",   "correspondencia": "PHRASE" },
+      { "texto": "tecnico de geladeira perto de mim", "correspondencia": "PHRASE" },
+      { "texto": "conserto geladeira brastemp",     "correspondencia": "EXACT" }
+    ],
+    "_correspondencia": "PHRASE por padrao. BROAD sem lance automatico e sem negativa madura e a forma mais rapida de gastar o dia inteiro em termo que voce nunca escolheria. EXACT pra termo que voce ja sabe que converte.",
+
+    "negativas": [
+      "gratis",
+      "gratuito",
+      "como fazer",
+      "como consertar",
+      "passo a passo",
+      "vaga",
+      "emprego",
+      "curso",
+      "manual",
+      "pdf",
+      "usado",
+      "segunda mao"
+    ],
+    "_negativas": "estas sao o piso, nao a lista final. Depois da primeira semana, abra o relatorio de TERMOS DE PESQUISA (nao o de palavras-chave: sao coisas diferentes) e mande pra ca tudo que apareceu e nao devia. Negativa entra em BROAD porque negativa de frase deixa passar a variacao, e a variacao e justamente o que voce nao quer comprar."
+  },
+
+  "anuncio": {
+    "url": "https://exemplo.com.br/conserto-de-geladeira",
+    "caminho1": "conserto",
+    "caminho2": "geladeira",
+
+    "titulos": [
+      "Conserto de Geladeira SP",
+      "Tecnico Vai Ate Voce Hoje",
+      "Orcamento Sem Compromisso",
+      "90 Dias de Garantia",
+      "Atendimento no Mesmo Dia"
+    ],
+    "_titulos": "minimo 3, limite de 30 caracteres cada. O codigo conta antes de enviar, porque o Google recusa com mensagem que nao diz qual campo passou do tamanho.",
+
+    "descricoes": [
+      "Tecnico especializado na sua casa no mesmo dia. Orcamento gratis e sem compromisso.",
+      "90 dias de garantia por escrito. Todas as marcas. Chame agora pelo telefone."
+    ],
+    "_descricoes": "minimo 2, limite de 90 caracteres cada."
+  },
+
+  "_depois_de_subir": "1) confira o texto e as palavras na interface; 2) ligue a campanha LA, porque ligar por aqui nao existe de proposito; 3) volte no dia 7 pelo relatorio de termos de pesquisa e engorde a lista de negativas."
+}

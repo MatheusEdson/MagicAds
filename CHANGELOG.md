@@ -1,5 +1,116 @@
 # Changelog
 
+## 1.8.0 — 2026-09-14
+
+**Google Ads deixou de ser só leitura.** Search sobe por receita, e existem
+`pausar-google` (freio) e `remover-google`. Na 1.6.3 a tabela de capacidades
+tinha acabado de trocar o `❌` por “dá, não implementado aqui”. Agora é `✅`, e o
+que os agentes não podem mais dizer é **“executar é na interface”**.
+
+O que segurou tanto tempo não foi API. Foi que uma receita capaz de gerar Search
+em dois comandos, sem lista de negativas, é uma máquina de comprar clique
+errado. A saída não foi documentar o risco: sem `grupo.negativas` e sem
+`campanha.geo`, o código **recusa**, e recusa antes de falar com o Google.
+
+```
+$ python -m magicads subir minha-receita.json
+RECEITA RECUSADA: falta `grupo.negativas`, e aqui ela e OBRIGATORIA.
+  Search sem lista de negativas compra 'gratis', 'como fazer',
+  'vaga de emprego', 'curso' e o nome dos seus concorrentes.
+  Comece por estas quatro: ["gratis", "gratuito", "como fazer", "vaga"]
+  Lista vazia nao conta: se voce escrever [], a recusa continua.
+```
+
+Lista vazia não conta, e negativa em branco também não. A recusa entrega as
+quatro primeiras escritas, porque recusa que só diz “faltou X” empurra a pessoa
+pro caminho errado.
+
+### Uma transação, não seis chamadas
+
+Orçamento, campanha, grupo, palavras, negativas e anúncio vão num
+`googleAds:mutate` só, amarrados por id temporário negativo. É atômico: ou entra
+tudo, ou não entra nada. **Por isso aqui não existe órfão**, e não existe o
+“olha o que já foi criado” que o `subir` da Meta precisa ter.
+
+A primeira versão chamava um serviço por vez, e tinha os dois defeitos ao mesmo
+tempo: o `--conferir` nunca passava — sem criação não há `resourceName` pra
+referenciar, então a campanha era recusada por `campaign_budget REQUIRED` — e
+falha no meio deixava orçamento órfão na conta do cliente.
+
+### `--conferir` só existe no Google, e o motivo importa
+
+Lá o `validateOnly` é honesto: valida a transação inteira e não cria nada. Na
+Meta, `validate_only` em `/campaigns` **cria de verdade**, e é por isso que o
+`subir` da Meta ensaia offline. Mesmo nome, comportamento oposto.
+
+### Um campo obrigatório que o erro se recusa a nomear
+
+`contains_eu_political_advertising` virou obrigatório em toda campanha. Sem ele
+o Google responde `REQUIRED` com a mensagem genérica “The required field was not
+present.”, e o nome do campo só aparece lá no fim, dentro de
+`location.fieldPathElements` — exatamente o pedaço que some quando você trunca o
+erro pra caber na tela. Por isso o módulo **traduz** o erro em vez de imprimir
+os primeiros 400 caracteres dele.
+
+### O orçamento não vai junto com a campanha
+
+Removida a campanha, o `campaignBudget` fica vivo e sem dono, e não aparece em
+nenhuma tela do dia a dia. Como este módulo cria um orçamento por campanha, ele
+seria o próprio produtor do lixo. `remover-google` apaga os dois, e **prova
+relendo** — nunca pela resposta do mutate, lição que veio da Meta, onde o
+`_method=DELETE` devolve sucesso com o objeto vivo.
+
+### Três coisas que o código decide por você
+
+Display e Parceiros de Pesquisa **desligados** (os dois vêm ligados na
+interface, e é assim que Search vira Display sem ninguém ter decidido isso),
+Manual CPC (lance automático numa campanha sem histórico gasta pra aprender, e
+quem paga a aula é o cliente) e negativa em **BROAD** (negativa de frase deixa
+passar a variação, e a variação é o que você não quer comprar).
+
+### Provado em conta real, e limpo depois
+
+`--conferir` validou as 21 operações; `--executar` criou os 21 objetos, todos
+`PAUSED`. Relido por `GET`: `SEARCH`, verba `30000000` micros, Display off,
+parceiros off, 12 critérios negativos e 4 positivos. `pausar-google` levou de
+`ENABLED` a `PAUSED` e é idempotente; `remover-google` deixou campanha e
+orçamento em `REMOVED`. A varredura final não achou nada meu vivo na conta.
+
+### Três testes que já estavam quebrados, e o canal novo revelou
+
+O do contrato casava `c == "([a-z]+)"` e não enxergava comando com hífen, então
+`remover-google` e `pausar-google` passariam sem cobertura — e qualquer comando
+hifenizado que viesse depois também. Os dois de receita rodavam **toda** receita
+pela validação da Meta; agora pulam o que não é Meta, com guarda pra garantir
+que pelo menos uma Meta foi validada de verdade.
+
+### E o scrub reprovou o exemplo do próprio repo
+
+O `conta` da receita nova é `000-000-0000`, e o `*00000000*` do `permitido()`
+não alcança: com hífen não há oito zeros seguidos. Quem clonasse e rodasse
+`./scripts/scrub.sh` no minuto um veria `FALHOU: MCC do Google Ads` apontando
+pra documentação do próprio repositório — e alarme falso no minuto um é a forma
+mais rápida de alguém desinstalar a trava mentalmente.
+
+Só apareceu rodando o scrub na mão. Agora o teste lê os globs do `permitido()`
+e confere o `conta` de **toda** receita contra eles, então o próximo
+placeholder que não estiver declarado falha na CI, e não no clone de outra
+pessoa.
+
+### E a varredura de histórico acusou um hash de diretório
+
+`git rev-list --objects --all` devolve **tree** junto com blob, e o conteúdo de
+uma tree é a lista de SHAs dos filhos. SHA é hexadecimal: um que comece com
+`eaa` casa com a regra do token da Meta. A varredura apontou segredo com a
+origem `magicads` — que nem é um arquivo, é um diretório.
+
+Deu certo por sorte até agora: nenhum hash de tree tinha começado com essas
+três letras. Agora ela filtra por `objecttype`, e lê 164 blobs de verdade em
+vez de 236 objetos. Falso positivo em ferramenta de segurança não é ruído: é o
+começo do hábito de ignorar o alarme.
+
+153 testes.
+
 ## 1.7.0 — 2026-09-14
 
 **A perna do Supabase rodou contra um Supabase de verdade pela primeira vez.**
@@ -44,6 +155,7 @@ E o escape de filtro da 1.5.2 parou de ser teoria: `--cliente 'acme&limit=1'`
 devolve **0 linhas** contra PostgREST real, em vez de virar outro filtro.
 
 124 testes.
+
 ## 1.6.3 — 2026-09-14
 
 **A tabela de capacidades dava o mesmo `❌` pro Google Ads e pro Google Business,

@@ -630,5 +630,65 @@ class AsRegrasMoramNumLugarSo(unittest.TestCase):
                         "a versao ancorada sumiu; o placeholder vai dar alarme falso")
 
 
+class OExemploDoRepoTemQuePassarNoProprioScrub(unittest.TestCase):
+    """O `conta` das receitas e placeholder, e placeholder que o scrub reprova
+    e alarme falso no minuto um -- que e a forma mais rapida de alguem
+    desinstalar a trava mentalmente.
+
+    Aconteceu de verdade: a receita do Google entrou com `000-000-0000`, e o
+    `*00000000*` do permitido() nao alcanca, porque com hifen nao ha oito zeros
+    seguidos. So apareceu rodando o scrub na mao. Agora aparece na CI.
+    """
+
+    def permitidos(self):
+        """Os globs do `case` do permitido(), lidos do regras.sh."""
+        import re
+        texto = (RAIZ / "scripts" / "regras.sh").read_text(encoding="utf-8")
+        corpo = texto.split("permitido() {", 1)[1].split("esac", 1)[0]
+        globs = []
+        for linha in corpo.splitlines():
+            linha = linha.strip()
+            if not linha or linha.startswith("#"):
+                continue
+            m = re.match(r"^(.+?)\)\s+return 0 ;;$", linha)
+            if m:
+                globs.extend(g.strip() for g in m.group(1).split("|"))
+        self.assertTrue(globs, "nao consegui ler o permitido() do regras.sh")
+        return globs
+
+    def test_toda_conta_de_receita_e_placeholder_declarado(self):
+        import fnmatch
+        globs = self.permitidos()
+        receitas = sorted((RAIZ / "receitas").glob("*.json"))
+        self.assertTrue(receitas)
+        for caminho in receitas:
+            conta = json.loads(caminho.read_text(encoding="utf-8")).get("conta")
+            if not conta:
+                continue
+            self.assertTrue(
+                any(fnmatch.fnmatchcase(conta, g) for g in globs),
+                "%s usa %r, que o scrub vai reprovar no primeiro clone"
+                % (caminho.name, conta))
+
+
+class AVarreduraDeHistoricoNaoPodeAcusarHashDeArvore(unittest.TestCase):
+    """`git rev-list --objects --all` devolve TREE junto com blob, e o conteudo
+    de uma tree e a lista de SHAs dos filhos. SHA e hexadecimal: um que comece
+    com "eaa" casa com a regra do token da Meta, e a varredura acusa segredo
+    onde ha o hash de um diretorio -- com a origem saindo como `magicads`, que
+    nem e um arquivo.
+
+    Falso positivo em ferramenta de seguranca nao e ruido: e o comeco do habito
+    de ignorar o alarme."""
+
+    def test_a_varredura_filtra_por_tipo_de_objeto(self):
+        texto = (RAIZ / "scripts" / "historico.sh").read_text(encoding="utf-8")
+        vivas = "\n".join(l for l in texto.splitlines()
+                          if l.strip() and not l.strip().startswith("#"))
+        self.assertIn("objecttype", vivas,
+                      "a varredura voltou a ler tree como se fosse arquivo")
+        self.assertIn('"blob"', vivas)
+
+
 if __name__ == "__main__":
     unittest.main()

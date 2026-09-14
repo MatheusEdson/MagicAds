@@ -135,20 +135,40 @@ Antes de promessa, a verdade. Esta tabela existe para ninguém — pessoa ou age
 |---|---|---|---|---|
 | **Meta** | ✅ | ✅ | ✅ | `magicads` ponta a ponta |
 | **Instagram** | ✅ | ✅ | ✅ | **é posicionamento, não canal separado** |
-| **Google Ads** | ✅ no ETL | ⚠️ dá, **não implementado aqui** | ⚠️ idem | API existe; hoje a subida é na interface |
+| **Google Ads** | ✅ no ETL | ✅ Search, por receita | ✅ pausar e remover | 1 transação atômica, nasce PAUSED |
 | **Google Business** | ⚠️ parcial | ❌ **não existe API** | ❌ | a ficha e o produto são na mão |
 | **LinkedIn** | ❌ | ❌ | ❌ | API separada, ainda não integrada |
 
-Os dois ❌ do Google **não são a mesma coisa**, e confundi-los é o erro que esta
-tabela existe pra impedir. No **Business** a API de produto não existe: ninguém
-sobe, nem você nem uma ferramenta paga. No **Ads** a API cria campanha, grupo,
-anúncio e palavra-chave sem problema — o que falta é código deste repositório.
+As duas linhas do Google **continuam diferentes**, e confundi-las é o erro que
+esta tabela existe pra impedir. No **Business** a API de produto não existe:
+ninguém sobe, nem você nem uma ferramenta paga, então prometer é mentir. No
+**Ads** ela sempre existiu, e agora está implementada aqui.
 
-Se você for implementar, o portão não é técnico, é **burocrático e leva dias**: o
-`developer token` sai no API Center de uma conta de administrador (MCC) e nasce
-em **acesso de teste**, que só fala com contas de teste. Pra tocar conta de
-produção você **solicita** a subida de nível (acesso básico) num formulário que
-o Google revisa. Quem já lê produção no ETL daqui já passou por esse portão.
+O que segurou o Google Ads tanto tempo não foi API, foi **modelo de receita**. A
+anatomia do Search é outra: palavra-chave, tipo de correspondência, negativa,
+grupo de anúncio. Portar a receita da Meta sem essas peças geraria campanha que
+roda e queima. Por isso a lista de **negativas é obrigatória** e a recusa
+acontece antes de falar com o Google:
+
+```
+$ python -m magicads subir minha-receita.json
+RECEITA RECUSADA: falta `grupo.negativas`, e aqui ela e OBRIGATORIA.
+  Search sem lista de negativas compra 'gratis', 'como fazer',
+  'vaga de emprego', 'curso' e o nome dos seus concorrentes.
+  Comece por estas quatro: ["gratis", "gratuito", "como fazer", "vaga"]
+  Lista vazia nao conta: se voce escrever [], a recusa continua.
+```
+
+O mesmo vale pro `geo`: Search sem geo entrega no mundo inteiro, e isso queima
+verba tão rápido quanto falta de negativa, só que mais silenciosamente, porque
+a métrica parece “só” ruim em vez de errada.
+
+**O portão pra usar é burocrático, e leva dias.** O `developer token` sai no API
+Center de uma conta de administrador (MCC) e nasce em **acesso de teste**, que só
+fala com contas de teste: o token parece válido, autentica, e só quebra quando
+você aponta pra conta de verdade. Pra produção você **solicita** a subida de
+nível num formulário que o Google revisa. Quem já lê produção no ETL daqui já
+passou por esse portão.
 
 Instagram não é canal a mais: é uma linha no targeting (`posicionamentos`) mais o `instagram_id` — sem ele o anúncio roda no IG com o nome e a foto da **Página do Facebook**. Tratar como canal separado leva a campanha duplicada e verba dividida entre duas coisas que a Meta já otimizava junto.
 
@@ -208,7 +228,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória. `./scripts/historico.sh` varre o **histórico inteiro**, que é outra pergunta: segredo que entrou num commit e saiu no seguinte some da árvore e continua no pack.
 
 ```bash
-python -m unittest discover -s tests   # 124 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 153 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 
@@ -233,7 +253,8 @@ copia não desconfia.
 | `relatorio` — portfólio, campanha, mudas | ✅ funciona, **lido do banco de verdade** |
 | Agentes Gandalf, 4 tipos de conta + porteiro | ✅ prontos |
 | Instagram | ✅ **não era canal, era posicionamento** — já sobe |
-| Google Ads: subir pela API | 🚧 depois (hoje lê; subir é na interface) |
+| Google Ads: Search por receita, pausar e remover | ✅ funciona, **provado em conta real** (21 objetos criados numa transação, pausados, removidos e conferidos por leitura) |
+| Google Ads: PMax, Shopping e extensão | 🚧 depois (continua na interface) |
 | GBP | ⛔ **não tem API de produto.** Fluxo escrito, automação não existe |
 | LinkedIn | 🚧 depois (API separada, coletor novo) |
 | Quebra por posicionamento no ETL | 🚧 depois |

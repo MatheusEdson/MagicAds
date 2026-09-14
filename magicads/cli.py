@@ -768,6 +768,18 @@ def main():
         cmd_chamada("POST", resto)
     elif c == "remover":
         cmd_remover(resto)
+    elif c == "remover-google":
+        from . import subir_google
+        try:
+            sys.exit(subir_google.main_remover(resto))
+        except subir_google.Recusa as e:
+            sys.exit("%s" % e)
+    elif c == "pausar-google":
+        from . import subir_google
+        try:
+            sys.exit(subir_google.main_pausar(resto))
+        except subir_google.Recusa as e:
+            sys.exit("%s" % e)
     elif c == "pausar":
         cmd_status(resto, "PAUSED")
     elif c == "ativar":

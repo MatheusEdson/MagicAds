@@ -19,19 +19,25 @@ mentindo, e mentira de agente vira promessa para o cliente.
 |---|---|---|---|---|
 | **Meta** (Facebook) | ✅ API | ✅ API | ✅ API | `magicads` ponta a ponta |
 | **Instagram** | ✅ junto da Meta | ✅ junto da Meta | ✅ | **é posicionamento, não canal** |
-| **Google Ads** | ✅ API (no ETL) | ⚠️ a API **dá**, aqui não tem | ⚠️ idem | subida é na interface, hoje |
+| **Google Ads** | ✅ API (no ETL) | ✅ Search, por receita | ✅ `pausar-google`, `remover-google` | negativas são **obrigatórias** na receita |
 | **Google Business** (GBP) | ⚠️ parcial | ❌ **não existe API** | ❌ | post e produto são na mão |
 | **LinkedIn** | ❌ fora do ETL | ❌ | ❌ | API separada, ainda não integrada |
 
-⚠️ **e** ❌ dizem coisas diferentes, e o agente precisa saber qual é qual.
-❌ é “não existe”: no GBP ninguém sobe produto por API, nem você nem ferramenta
-paga, então prometer é mentir. ⚠️ é “dá, mas não por aqui”: o Google Ads cria
-campanha, grupo, anúncio e palavra-chave pela API sem problema — o que falta é
-código deste repositório.
+❌ aqui é **“não existe”**, não “não fizemos”. No GBP ninguém sobe produto por
+API, nem você nem ferramenta paga, então prometer é mentir. O Google Ads era
+“dá, mas não por aqui”, e virou ✅: Search sobe por receita, numa transação
+atômica, nascendo PAUSED.
 
-Pro agente isso muda a frase. Com ❌: “isso não tem API, tem que ser na mão”.
-Com ⚠️: “dá pra automatizar, mas hoje eu não faço; te monto o plano e você
-executa na interface”. **Nunca** “o Google não deixa”.
+**A regra do Search que o agente precisa repetir:** a lista de negativas é
+obrigatória, e a recusa acontece antes de falar com o Google. Search sem
+negativa compra “grátis”, “como fazer”, “vaga de emprego”, “curso” e o nome dos
+concorrentes. O mesmo vale pro `geo`: sem ele a campanha entrega no mundo
+inteiro, e isso queima verba mais silenciosamente ainda, porque a métrica
+parece “só” ruim em vez de errada.
+
+O que o agente **não** pode dizer sobre o GBP: “vou publicar o produto”. O que
+ele **não** pode mais dizer sobre o Google Ads: “o Google não deixa”, nem
+“executar é na interface”.
 
 ### Instagram não é um canal a mais
 
@@ -59,16 +65,28 @@ você não pode ler "vazio" como "não existe".
 ordem de impacto, e entregar para alguém executar. Isso é útil. Prometer que vai
 executar, não.
 
-### Google Ads: lê, não sobe
+### Google Ads: lê e sobe Search, com a negativa como preço de entrada
 
-O ETL já traz custo, impressão, clique e conversão por campanha. Subir pela API
-é possível e **não está implementado** — e isso é uma escolha, não um bug: a
-subida no Google tem outra anatomia (palavra-chave, correspondência, negativa,
-extensão) e portar o modelo de receita da Meta para lá sem isso produziria
-campanha que roda e queima.
+O ETL traz custo, impressão, clique e conversão por campanha, e a subida de
+Search existe desde a 1.8.0. Ela demorou de propósito: a anatomia do Search é
+outra (palavra-chave, correspondência, negativa, grupo de anúncio), e portar o
+modelo de receita da Meta para lá sem essas peças produziria campanha que roda e
+queima. A saída não foi documentar o risco, foi **recusar** a receita.
 
-**O que o agente faz:** lê a série, aponta o que está caro, e monta o plano de
-alteração. Você executa na interface.
+Tudo sobe numa transação atômica (orçamento, campanha, grupo, palavras,
+negativas e anúncio de uma vez), nasce `PAUSED`, e com Display e Parceiros de
+Pesquisa **desligados** — os dois vêm ligados por padrão na interface, e é assim
+que Search vira Display sem ninguém ter decidido isso.
+
+**O que o agente faz:** lê a série, aponta o que está caro, monta a receita,
+roda o ensaio, e o `--executar` é seu. Depois, `pausar-google` é freio e
+`remover-google` apaga campanha **e orçamento** (o orçamento não vai junto: fica
+vivo e sem dono).
+
+**O que continua na interface:** extensão, Performance Max, Shopping, edição de
+texto de anúncio — e o passo do dia 7, que é abrir o relatório de **termos de
+pesquisa** e engordar a lista de negativas. Detalhe em
+[`google-ads.md`](google-ads.md).
 
 ---
 
@@ -90,7 +108,7 @@ alteração. Você executa na interface.
 | [`meta-operar.md`](meta-operar.md) | medir, decidir, matar, escalar |
 | [`meta-emergencia.md`](meta-emergencia.md) | está gastando errado **agora** |
 | [`instagram.md`](instagram.md) | posicionamento, identidade e o que muda no criativo |
-| [`google-ads.md`](google-ads.md) | ler a série e montar o plano |
+| [`google-ads.md`](google-ads.md) | ler a série, subir Search, pausar e remover |
 | [`gbp.md`](gbp.md) | a ficha, e por que ela não se automatiza |
 | [`linkedin.md`](linkedin.md) | o que existe hoje, que é pouco |
 

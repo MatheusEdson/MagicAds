@@ -34,7 +34,10 @@ def comandos_do_cli():
             corpo = ast.get_source_segment(fonte, no)
     assert corpo, "nao achei main() em cli.py"
     # `-h`, `--help` e `help` nao sao operacao, sao cortesia: ficam de fora.
-    return set(re.findall(r'c == "([a-z]+)"', corpo)) - {"help"}
+    # `[a-z-]` e nao `[a-z]`: `remover-google` tem hifen, e a versao antiga do
+    # regex simplesmente NAO ENXERGAVA o comando -- entao o teste acusava o
+    # contrato de descrever o que nao existe, quando existia.
+    return set(re.findall(r'c == "([a-z-]+)"', corpo)) - {"help"}
 
 
 class ContratoBateComOCLI(unittest.TestCase):
@@ -106,9 +109,15 @@ class MatrizDePlataformaEHonesta(unittest.TestCase):
         linha = [p for p in contrato.PLATAFORMAS if p[0] == "Instagram"][0]
         self.assertIn("POSICIONAMENTO", " ".join(linha).upper())
 
-    def test_google_ads_nao_promete_subida(self):
+    def test_google_ads_diz_o_que_sobe_e_o_que_nao(self):
+        # Subir passou a existir, entao a honestidade aqui inverteu de lado:
+        # o risco agora e prometer PMax e Shopping junto.
         linha = [p for p in contrato.PLATAFORMAS if "Google Ads" in p[0]][0]
-        self.assertIn("NAO implementada", linha[2])
+        texto = " ".join(linha)
+        self.assertIn("Search", texto)
+        self.assertIn("interface", texto)
+        for so_na_mao in ("PMax", "Shopping"):
+            self.assertIn(so_na_mao, texto)
 
 
 class SaidaNaoQuebra(unittest.TestCase):

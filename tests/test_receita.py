@@ -211,11 +211,16 @@ class ReceitasDoRepo(unittest.TestCase):
     def test_todas_as_receitas_de_exemplo_validam(self):
         arquivos = sorted(glob.glob(str(RAIZ / "receitas" / "*.json")))
         self.assertTrue(arquivos, "nenhuma receita de exemplo encontrada")
+        vistas = 0
         for caminho in arquivos:
             with open(caminho, encoding="utf-8") as fh:
                 r = json.load(fh)
+            if (r.get("canal") or "meta").lower() != "meta":
+                continue      # as de Google vivem em test_receita_google.py
             objetivo, otimizacao, destino, _ = subir.valida(r)
             subir.monta(r, objetivo, otimizacao, destino)
+            vistas += 1
+        self.assertTrue(vistas, "nenhuma receita de Meta validada: o filtro de canal comeu todas")
 
     def test_existe_uma_receita_por_tipo_de_conta(self):
         # Os quatro tipos vem dos agentes Gandalf. Tipo sem receita e tipo que,
@@ -223,7 +228,10 @@ class ReceitasDoRepo(unittest.TestCase):
         tipos = set()
         for caminho in glob.glob(str(RAIZ / "receitas" / "*.json")):
             with open(caminho, encoding="utf-8") as fh:
-                tipos.add(json.load(fh)["tipo"])
+                r = json.load(fh)
+            if (r.get("canal") or "meta").lower() != "meta":
+                continue      # `tipo` e vocabulario da Meta; o Google nao tem
+            tipos.add(r["tipo"])
         self.assertEqual(tipos, {"b2b", "local-whatsapp", "loja", "balcao"})
 
 

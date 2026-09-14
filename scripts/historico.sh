@@ -52,7 +52,16 @@ verifica() {   # <origem>; conteudo em stdin
 }
 
 mapa=$(git rev-list --objects --all)
-blobs=$(printf '%s\n' "$mapa" | awk 'NF>1 {print $1}' | sort -u)
+# `--objects` lista TREE junto com blob, e `git cat-file -p` de uma tree
+# imprime o SHA de cada filho. SHA e hexadecimal: um que por acaso comece
+# com "eaa" casa com a regra do token da Meta (EAA[A-Za-z0-9]{20,}, que
+# roda sem diferenciar maiuscula), e a varredura acusa segredo onde ha o
+# hash de um diretorio. Aconteceu de verdade, com a origem aparecendo como
+# `magicads` -- que nem e um arquivo. Falso positivo em ferramenta de
+# seguranca nao e ruido: e o comeco do habito de ignorar o alarme.
+blobs=$(printf '%s\n' "$mapa" | awk 'NF>1 {print $1}' | sort -u \
+        | git cat-file --batch-check='%(objectname) %(objecttype)' 2>/dev/null \
+        | awk '$2 == "blob" {print $1}')
 n_blob=$(printf '%s\n' "$blobs" | grep -c .)
 n_commit=$(git rev-list --all --count)
 

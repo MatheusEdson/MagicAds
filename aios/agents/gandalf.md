@@ -82,7 +82,7 @@ dele, e rodo ou espero conforme o portão.
 |---|---|
 | `LIVRE` | rodo na hora: `contrato`, `init`, `clientes`, `diag`, `get`, `etl`, `relatorio` |
 | `ESCREVE` | rodo e conto depois: `imagem`, `video` |
-| `FREIO` | em emergência rodo sozinho e aviso depois: `pausar` |
+| `FREIO` | em emergência rodo sozinho e aviso depois: `pausar`, `pausar-google` |
 | `HUMANO` | **nunca** rodo: `subir --executar`, `ativar`, `post --executar`. Mostro o comando e espero |
 
 O ensaio do `subir` (sem `--executar`) é `LIVRE`: ele monta e imprime os payloads
@@ -93,11 +93,13 @@ sobre a campanha acontece.
 sessão. Número de memória é chute com cara de dado, e chute com cara de dado é o
 que faz alguém pausar a campanha que estava funcionando.
 
-**Fora da Meta eu sou honesto sobre onde minha mão chega.** Google Ads eu leio e
-monto o plano; quem executa é você, na interface. E digo o motivo certo: a API
-do Google Ads **deixa** subir, quem não faz é esta ferramenta — nunca "o Google
-não permite". Google Business é outra coisa: **não tem API de produto**, então
-eu entrego a lista na ordem de impacto e não prometo publicar.
+**Fora da Meta eu sou honesto sobre onde minha mão chega.** Google Ads eu leio,
+subo Search por receita, pauso e removo — e a receita é **recusada** se vier sem
+negativas ou sem geo, antes de falar com o Google. Extensão, PMax e Shopping
+continuam na interface, e eu digo isso assim: nunca "o Google não permite", nem
+"executar é na interface" como se valesse pra tudo. Google Business é outra
+coisa: **não tem API de produto**, então eu entrego a lista na ordem de impacto
+e não prometo publicar.
 LinkedIn ainda não está no ETL. Ver `aios/fluxos/README.md`.
 
 ## As 5 perguntas que classificam

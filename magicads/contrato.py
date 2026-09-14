@@ -166,6 +166,22 @@ COMANDOS = [
                   "tambem e o que a Meta devolve sob rate limit.",
     },
     {
+        "nome": "pausar-google",
+        "uso": "python -m magicads pausar-google <conta> <id-da-campanha>",
+        "portao": FREIO,
+        "faz": "pausa a campanha do Google Ads e RELE pra provar que pausou. Executa direto, sem --executar: freio que exige confirmacao e freio que nao se usa na hora do aperto.",
+        "devolve": "o status antes e depois, conferido por leitura, ou sai 1.",
+        "quando": "campanha gastando errado agora. Nao destroi nada: da pra despausar na interface.",
+    },
+    {
+        "nome": "remover-google",
+        "uso": "python -m magicads remover-google <conta> <id-da-campanha> --executar",
+        "portao": HUMANO,
+        "faz": "remove a campanha do Google Ads E o orcamento dela, e RELE pra provar. O orcamento nao vai junto com a campanha: removida a campanha, ele fica vivo e sem dono, e nao aparece em nenhuma tela do dia a dia.",
+        "devolve": "status REMOVED nos dois, conferido por leitura, ou sai 1.",
+        "quando": "limpar campanha de teste, ou campanha que nasceu errada. Remover nao tem desfazer: proponha, nao rode.",
+    },
+    {
         "nome": "remover",
         "uso": "python -m magicads remover <cliente> <id> --executar",
         "portao": HUMANO,
@@ -214,8 +230,11 @@ PLATAFORMAS = [
     ("Instagram", "subir, medir", "mesma API da Meta",
      "e POSICIONAMENTO, nao canal separado. Sem `instagram_id` na receita o "
      "anuncio roda no IG com o nome da Pagina do Facebook"),
-    ("Google Ads", "medir", "leitura no ETL; subida NAO implementada",
-     "subir ainda e na interface. O agente monta o plano, voce executa la"),
+    ("Google Ads", "subir Search, medir, pausar, remover",
+     "REST v25: a subida inteira vai em UMA transacao atomica",
+     "a receita e RECUSADA sem negativas e sem geo, antes de falar com o "
+     "Google. PMax, Shopping e extensao continuam na interface. Precisa de "
+     "developer token com acesso basico, que se SOLICITA e leva dias"),
     ("Google Business (GBP)", "quase nada", "NAO tem API de produto",
      "post e produto sao na mao. Termo novo demora ~2 meses pra aparecer. "
      "O agente que prometer automacao aqui esta mentindo"),

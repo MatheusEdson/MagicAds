@@ -33,6 +33,10 @@ permitido() {
         1234567890|0123456789)         return 0 ;;
         act_1234567890|act_0123456789) return 0 ;;
         123-456-7890)                  return 0 ;;
+        # O customer id do Google escrito com hifen e todo zero. O
+        # *00000000* la de cima nao alcanca: 000-000-0000 nao tem oito
+        # zeros seguidos. A receita de exemplo do repo reprovava por isso.
+        000-000-0000)                  return 0 ;;
         # RFC 5737 / RFC 3849: faixas que existem PARA documentacao. Usar 1.2.3.4
         # de exemplo e apontar pra maquina de alguem.
         127.0.0.1|0.0.0.0|1.2.3.4)     return 0 ;;
