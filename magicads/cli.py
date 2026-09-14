@@ -27,6 +27,7 @@ USO
   python -m magicads post <cliente> act_123/campaigns name=[C01] ... --executar
   python -m magicads pausar <cliente> 120xxxxxxxx
   python -m magicads ativar <cliente> 120xxxxxxxx --executar
+  python -m magicads etl --dias 7          (ver docstring de etl.py)
 """
 import json
 import os
@@ -377,6 +378,9 @@ def main():
         cmd_status(sys.argv[2:], "PAUSED")
     elif c == "ativar":
         cmd_status(sys.argv[2:], "ACTIVE")
+    elif c == "etl":
+        from . import etl
+        sys.exit(etl.main(sys.argv[2:]))
     else:
         print(__doc__)
         sys.exit("comando desconhecido: %r" % c)

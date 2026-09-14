@@ -61,9 +61,15 @@ python -m magicads post acme act_000000000000000/campaigns \
 
 # 6. freio
 python -m magicads pausar acme 120000000000000000
+
+# 7. série no banco (Meta + Google), idempotente
+export MAGICADS_SUPABASE_URL=https://xxxx.supabase.co
+export MAGICADS_SUPABASE_KEY=...          # service key, só no servidor
+python -m magicads etl --dias 7 --seco    # mostra e não escreve
+python -m magicads etl --dias 7
 ```
 
-Sem dependência: só Python 3.8+ da biblioteca padrão. Não tem `pip install`, não tem `node_modules`, não tem framework.
+Sem dependência: só Python 3.8+ da biblioteca padrão. Não tem `pip install`, não tem `node_modules`, não tem framework. (Postgres seu em vez de Supabase? `DATABASE_URL` + `psycopg2`, e é a única dependência opcional do projeto.)
 
 ## A ordem importa
 
@@ -88,21 +94,25 @@ Dito na cara, pra ninguém perder tempo:
 
 ## Segurança
 
+Detalhe em [SECURITY.md](SECURITY.md). O resumo:
+
 1. O token **nunca** é impresso. O filtro de saída troca o valor por `<TOKEN>` inclusive dentro de mensagem de erro (a Meta ecoa parâmetro, e é assim que token vaza em log).
 2. `post` roda em **modo validação por padrão**. Criar de verdade exige `--executar`.
 3. ⚠️ **`validate_only` não protege em `/campaigns`.** A Meta cria de verdade nesse endpoint, com ou sem a flag. Em conjunto e anúncio, protege. O CLI avisa na hora.
 4. Cofre com um arquivo por cliente, `chmod 600`. Perder um não é perder todos.
-5. Nada de token em pasta compartilhada: costuma ser legível pelo grupo.
+5. **Falha não vira zero.** Se a conta falhar no ETL, nada é escrito pra ela: zero por erro de rede vira "a campanha parou" no relatório.
+6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
 
 ## Estado
 
 | Parte | Estado |
 |---|---|
 | CLI (`clientes`, `diag`, `get`, `post`, `pausar`, `ativar`) | ✅ funciona |
-| Guias do app Meta e do token | 🚧 em escrita |
-| Schema do banco | ✅ pronto |
-| ETL (Meta + Google → Postgres) | 🚧 próximo |
+| ETL Meta + Google, idempotente | ✅ funciona |
+| Schema do banco (4 tabelas) | ✅ pronto |
+| Guias do app Meta e do token | ✅ escritos |
 | Regras de agente | 🚧 próximo |
+| Instagram, GBP, LinkedIn | 🚧 depois (mesmo formato, é somar canal) |
 
 ## Licença
 

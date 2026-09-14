@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Trava o push quando o scrub reprova.
+#
+# Instale com:
+#   cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# Pular (e assumir a responsabilidade): git push --no-verify
+
+raiz="$(git rev-parse --show-toplevel)"
+
+if [ ! -x "$raiz/scripts/scrub.sh" ] && [ ! -f "$raiz/scripts/scrub.sh" ]; then
+    echo "pre-push: scripts/scrub.sh nao existe. Deixando passar."
+    exit 0
+fi
+
+echo "pre-push: rodando scrub..."
+if bash "$raiz/scripts/scrub.sh"; then
+    exit 0
+fi
+
+echo
+echo "PUSH BLOQUEADO. O scrub achou segredo ou dado de cliente."
+echo "Corrija e tente de novo. Se for falso positivo, ajuste scripts/scrub.sh"
+echo "em vez de usar --no-verify: a proxima pessoa vai tropecar no mesmo ponto."
+exit 1
