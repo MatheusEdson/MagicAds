@@ -285,6 +285,36 @@ class ContagemDeResultado(unittest.TestCase):
     def test_sem_actions(self):
         self.assertEqual(etl.conta_resultados(None), (0, 0))
 
+    def test_o_mesmo_lead_em_dois_action_types_conta_uma_vez(self):
+        # Visto ao vivo em 21/08/2026 numa conta real: a mesma linha trazia
+        # `lead=1` e `offsite_conversion.fb_pixel_lead=1`, que sao o MESMO lead.
+        # Somar inflaria o resultado e dividiria o custo pela metade -- o jeito
+        # mais caro de errar, porque faz escalar o que nao estava funcionando.
+        actions = [{"action_type": "lead", "value": "1"},
+                   {"action_type": "offsite_conversion.fb_pixel_lead", "value": "1"}]
+        self.assertEqual(etl.conta_resultados(actions), (0, 1))
+
+    def test_sem_o_agregado_o_especifico_vale(self):
+        # Conta que so tem pixel nao pode ficar com zero resultado.
+        actions = [{"action_type": "offsite_conversion.fb_pixel_lead", "value": "3"}]
+        self.assertEqual(etl.conta_resultados(actions), (0, 3))
+
+    def test_familias_diferentes_somam(self):
+        # Lead e compra sao coisas distintas: aqui somar e o certo.
+        actions = [{"action_type": "lead", "value": "2"},
+                   {"action_type": "purchase", "value": "5"}]
+        self.assertEqual(etl.conta_resultados(actions), (0, 7))
+
+    def test_compra_agregada_manda_sobre_a_do_pixel(self):
+        actions = [{"action_type": "purchase", "value": "4"},
+                   {"action_type": "offsite_conversion.fb_pixel_purchase", "value": "4"}]
+        self.assertEqual(etl.conta_resultados(actions), (0, 4))
+
+    def test_lead_do_formulario_nao_soma_com_o_total(self):
+        actions = [{"action_type": "lead", "value": "6"},
+                   {"action_type": "onsite_conversion.lead_grouped", "value": "6"}]
+        self.assertEqual(etl.conta_resultados(actions), (0, 6))
+
 
 if __name__ == "__main__":
     unittest.main()

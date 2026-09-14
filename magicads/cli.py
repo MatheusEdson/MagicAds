@@ -200,7 +200,8 @@ def cmd_diag(cliente):
     print("\n" + "-" * 92)
     print("CONTAS DE ANUNCIO (%d)" % len(contas))
     print("-" * 92)
-    negocios, pode_escrever, tem_pagamento = set(), False, False
+    negocios = set()
+    com_escrita, com_pagamento, prontas = [], [], []
     for c in contas:
         tarefas = c.get("user_tasks") or []
         fs = c.get("funding_source_details") or {}
@@ -208,8 +209,13 @@ def cmd_diag(cliente):
         if b.get("id"):
             negocios.add((b.get("id"), b.get("name")))
         escreve = any(t in tarefas for t in ("MANAGE", "ADVERTISE"))
-        pode_escrever = pode_escrever or escreve
-        tem_pagamento = tem_pagamento or bool(fs.get("display_string"))
+        paga = bool(fs.get("display_string"))
+        if escreve:
+            com_escrita.append(c.get("id"))
+        if paga:
+            com_pagamento.append(c.get("id"))
+        if escreve and paga:
+            prontas.append(c.get("id"))
         print("  %-26s %s" % ((c.get("name") or "")[:26], c.get("id")))
         print("     status=%s  tasks=%s" % (c.get("account_status"), ",".join(tarefas) or "VAZIO"))
         print("     portfolio=%s" % (b.get("name") or "NENHUM"))
@@ -217,14 +223,21 @@ def cmd_diag(cliente):
         if not escreve:
             print("     ATENCAO: sem MANAGE/ADVERTISE. Le a conta e NAO cria nada nela.")
 
-    # portao 5: pagina.
-    # A verdade sobre pagina mora no lado do NEGOCIO. `promote_pages` filtra em
-    # silencio o que o token nao consegue ler e devolve vazio mesmo quando a
-    # pagina existe.
+    # portao 5: pagina. Duas fontes, e NENHUMA das duas basta sozinha.
+    #
+    # Pelo lado do NEGOCIO (`owned_pages`/`client_pages`) voce ve o que o
+    # portfolio possui. Mas um system user que opera o BM do CLIENTE sem ser
+    # admin de la recebe lista VAZIA nessas bordas -- e nao e erro, e 200 com
+    # `data:[]`. Foi o que aconteceu num teste ao vivo: 28 bordas de negocio
+    # devolveram zero enquanto `me/assigned_pages` devolvia 10 paginas usaveis.
+    #
+    # Pelo lado do TOKEN (`me/assigned_pages`) voce ve o que foi atribuido a
+    # esta identidade, que e justamente o caso comum na frota. Confiar so no
+    # negocio dava "pagina FALTA" com dez paginas na mao.
     print("\n" + "-" * 92)
-    print("PAGINAS (lidas pelo portfolio, nao por promote_pages)")
+    print("PAGINAS (as duas fontes: o portfolio e o proprio token)")
     print("-" * 92)
-    paginas = []
+    achadas = {}
     for bid, bnome in sorted(negocios):
         for borda in ("owned_pages", "client_pages"):
             r, er = chamada("GET", "%s/%s" % (bid, borda), {"fields": "id,name", "limit": "50"})
@@ -234,8 +247,9 @@ def cmd_diag(cliente):
             it = (r or {}).get("data") or []
             print("  [%s] %s: %d" % (bnome, borda, len(it)))
             for x in it:
-                paginas.append(x)
+                achadas.setdefault(x.get("id"), dict(x, tasks=[], fonte="portfolio"))
                 print("      %-32s %s" % ((x.get("name") or "")[:32], x.get("id")))
+    do_portfolio = len(achadas)
 
     ap, er = chamada("GET", "me/assigned_pages", {"fields": "id,name,tasks", "limit": "50"})
     com_messaging = False
@@ -247,19 +261,43 @@ def cmd_diag(cliente):
         for x in it:
             tarefas = x.get("tasks") or []
             com_messaging = com_messaging or ("MESSAGING" in tarefas)
+            atual = achadas.get(x.get("id"))
+            if atual:
+                atual["tasks"] = tarefas
+                atual["fonte"] = "portfolio+token"
+            else:
+                achadas[x.get("id")] = dict(x, fonte="token")
             print("      %-32s %-18s tasks=%s" % ((x.get("name") or "")[:32], x.get("id"),
                                                   ",".join(tarefas)))
+
+    paginas = list(achadas.values())
+    so_pelo_token = [p for p in paginas if p["fonte"] == "token"]
+    if so_pelo_token and not do_portfolio:
+        print("\n  NOTA: o portfolio nao devolveu pagina nenhuma, e o token tem %d."
+              % len(so_pelo_token))
+        print("  Isso e normal quando o system user opera o BM do cliente sem ser admin la.")
+        print("  Lista vazia nessas bordas vem como 200, entao nao confunda com erro.")
 
     print("\n" + "-" * 92)
     print("VEREDITO")
     print("-" * 92)
+    # Com token de frota, "OK" sem numero engana: basta UMA conta passar pra
+    # linha ficar verde, e ai voce sobe na conta errada achando que todas
+    # estavam prontas.
+    n = len(contas)
     print("  %-30s %s" % ("token abre", "OK"))
-    print("  %-30s %s" % ("conta de anuncio", "OK" if contas else "FALTA"))
+    print("  %-30s %s" % ("conta de anuncio", "OK (%d)" % n if contas else "FALTA"))
     print("  %-30s %s" % ("escrita na conta",
-                          "OK" if pode_escrever else "FALTA (papel Anunciante ou superior)"))
+                          "OK (%d de %d)" % (len(com_escrita), n) if com_escrita
+                          else "FALTA (papel Anunciante ou superior)"))
     print("  %-30s %s" % ("forma de pagamento",
-                          "OK" if tem_pagamento else "FALTA (conta nova nasce sem, e status=1 nao avisa)"))
-    print("  %-30s %s" % ("pagina", "OK" if paginas else "FALTA"))
+                          "OK (%d de %d)" % (len(com_pagamento), n) if com_pagamento
+                          else "FALTA (conta nova nasce sem, e status=1 nao avisa)"))
+    print("  %-30s %s" % ("pagina", "OK (%d)" % len(paginas) if paginas else "FALTA"))
+    if n > 1:
+        print("  %-30s %d de %d" % ("contas prontas p/ subir", len(prontas), n))
+        if len(prontas) < n:
+            print("     As outras leem e NAO criam. Confira a conta certa antes de subir.")
 
     # portao 6, o mais traicoeiro: a pagina pode ter a task MESSAGING e NAO ter
     # uma conta de WhatsApp conectada. Nenhuma LEITURA mostra isso; quem responde
@@ -269,7 +307,11 @@ def cmd_diag(cliente):
     # validate_only NAO protege em /campaigns, so em adset e anuncio.
     zap = None
     if contas and paginas:
-        conta1 = contas[0].get("id")
+        # A sonda so diz algo util numa pagina que o token consegue usar pra
+        # mensagem. Pendurar numa pagina sem MESSAGING devolve outro erro e
+        # voce conclui a coisa errada sobre o WhatsApp.
+        alvo = ([p for p in paginas if "MESSAGING" in (p.get("tasks") or [])] or paginas)[0]
+        conta1 = (prontas or [c.get("id") for c in contas])[0]
         cp, _ = chamada("GET", "%s/campaigns" % conta1, {"fields": "id", "limit": "1"})
         camps = ((cp or {}).get("data") or [])
         if camps:
@@ -278,7 +320,7 @@ def cmd_diag(cliente):
                 "optimization_goal": "CONVERSATIONS", "billing_event": "IMPRESSIONS",
                 "bid_strategy": "LOWEST_COST_WITHOUT_CAP", "destination_type": "WHATSAPP",
                 "daily_budget": "2000", "status": "PAUSED",
-                "promoted_object": json.dumps({"page_id": paginas[0].get("id")}),
+                "promoted_object": json.dumps({"page_id": alvo.get("id")}),
                 "targeting": json.dumps({"geo_locations": {"countries": ["BR"]},
                                          "age_min": 18,
                                          "targeting_automation": {"advantage_audience": 1}}),
@@ -305,7 +347,7 @@ def cmd_diag(cliente):
         print("     A pagina tem MESSAGING, mas isso NAO prova WhatsApp conectado. Crie uma")
         print("     campanha primeiro e rode o diag de novo, que ai a sonda roda.")
 
-    if contas and pode_escrever and tem_pagamento and paginas and zap is True:
+    if prontas and paginas and zap is True:
         print("\n  PODE SUBIR. Monte com `post`, que valida antes de criar.")
     else:
         print("\n  NAO SUBA AINDA: resolva o que esta FALTA acima.")

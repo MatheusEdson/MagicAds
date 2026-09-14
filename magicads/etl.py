@@ -50,12 +50,27 @@ MSG_INICIADA = "onsite_conversion.total_messaging_connection"
 MSG_RESPONDIDA = "onsite_conversion.messaging_first_reply"
 MSG_DEPTH_3 = "onsite_conversion.messaging_user_depth_3_message_send"
 
-CONVERSAO = (
-    "lead",
-    "onsite_conversion.lead_grouped",
-    "purchase",
-    "offsite_conversion.fb_pixel_lead",
-    "offsite_conversion.fb_pixel_purchase",
+# A Meta reporta o MESMO resultado em mais de um `action_type`: `lead` e o total
+# de Leads, e ele JA INCLUI o lead do pixel e o do formulario. Somar os tres
+# conta a mesma pessoa duas ou tres vezes -- e resultado inflado divide o custo,
+# entao um lead de R$ 100 aparece como dois de R$ 50 e voce escala o que nao
+# estava funcionando.
+#
+# Visto ao vivo em 21/08/2026: a mesma linha trazia `lead=1` e
+# `offsite_conversion.fb_pixel_lead=1`, que sao o mesmo lead.
+#
+# Regra: dentro de cada familia, o AGREGADO manda; os especificos so entram
+# quando o agregado nao veio. Entre familias, soma normal -- lead e compra sao
+# coisas diferentes.
+FAMILIAS = (
+    ("lead", ("onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead")),
+    ("purchase", ("offsite_conversion.fb_pixel_purchase",)),
+)
+
+# Achatado, so pra quem quiser saber "isto conta como resultado?".
+CONVERSAO = tuple(
+    [agregado for agregado, _ in FAMILIAS]
+    + [e for _, especificos in FAMILIAS for e in especificos]
 )
 
 DIAS_ATE_ESQUECER = 35
@@ -76,8 +91,13 @@ def conta_resultados(actions):
     `depth_5` fica de fora de proposito: ele conta MENSAGEM ENVIADA, nao pessoa,
     e por isso consegue ser maior que o numero de conversas iniciadas. Serve de
     sinal de que ha conversa longa, nunca de contagem de gente.
+
+    conversoes respeita as FAMILIAS: dentro de cada uma, o agregado manda e os
+    especificos so entram se ele nao veio. Somar os dois contaria a mesma pessoa
+    duas vezes, e inflar resultado e pior que nao ter resultado -- ele divide o
+    custo pela metade e faz voce escalar o que nao estava funcionando.
     """
-    conversas = conversoes = 0
+    valores, conversas = {}, 0
     for a in actions or []:
         t = a.get("action_type", "")
         try:
@@ -86,8 +106,15 @@ def conta_resultados(actions):
             continue
         if t == MSG_INICIADA:
             conversas += v
-        elif t in CONVERSAO:
-            conversoes += v
+        else:
+            valores[t] = valores.get(t, 0) + v
+
+    conversoes = 0
+    for agregado, especificos in FAMILIAS:
+        if agregado in valores:
+            conversoes += valores[agregado]
+        else:
+            conversoes += sum(valores.get(e, 0) for e in especificos)
     return conversas, conversoes
 
 
