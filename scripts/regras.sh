@@ -104,11 +104,13 @@ aviso_sem_lista() {
     if [ -f "$LISTA" ]; then
         echo "AVISO: nome de cliente NAO checado. $LISTA existe mas nao tem"
         echo "       nome nenhum (so comentario ou linha em branco)."
+        echo "       Abra o arquivo e tire o # das linhas de nome, ou escreva"
+        echo "       os seus. O modelo ja mostra o formato."
     else
         echo "AVISO: nome de cliente NAO checado: $LISTA nao existe."
+        echo "       cp .scrub-clientes.local.exemplo .scrub-clientes.local"
     fi
     echo "       Um nome por linha nesse arquivo. Ele e ignorado pelo git, entao"
     echo "       os nomes ficam na sua maquina. Regex generico nao sabe que"
     echo "       \"Acme Pneus\" e cliente seu -- so essa lista sabe."
-    echo "       Comece com: cp .scrub-clientes.local.exemplo .scrub-clientes.local"
 }
