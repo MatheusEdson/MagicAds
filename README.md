@@ -208,7 +208,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória. `./scripts/historico.sh` varre o **histórico inteiro**, que é outra pergunta: segredo que entrou num commit e saiu no seguinte some da árvore e continua no pack.
 
 ```bash
-python -m unittest discover -s tests   # 118 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 124 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 

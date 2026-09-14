@@ -83,15 +83,25 @@ class Banco(object):
                       (slug, nome, nicho, cidade), escreve=True)
 
     def conta_salva(self, canal, account_id, cliente_slug, nome=None):
+        """Cadastra a conta, e REATIVA se ela estava removida.
+
+        O `ativo=True` explicito nao e detalhe. Sem ele, cadastrar de novo uma
+        conta que passou por `--remover` atualizava nome e cliente e deixava
+        `ativo` como estava: falso. O CLI imprimia `google 123 -> acme`, que e
+        mensagem de sucesso, e a conta continuava fora da carteira e fora do
+        ETL. Nao existe comando `--readicionar`, entao repetir o `conta` E o
+        jeito obvio de desfazer, e o jeito obvio nao pode falhar calado.
+        """
         linha = {"canal": canal, "account_id": account_id,
-                 "cliente_slug": cliente_slug, "nome": nome}
+                 "cliente_slug": cliente_slug, "nome": nome, "ativo": True}
         if self.modo == "supabase":
             self._rest("contas?on_conflict=canal,account_id", [linha], "POST",
                        "resolution=merge-duplicates,return=minimal")
         else:
-            self._sql("insert into contas (canal, account_id, cliente_slug, nome) "
-                      "values (%s,%s,%s,%s) on conflict (canal, account_id) do update set "
-                      "cliente_slug = excluded.cliente_slug, nome = excluded.nome",
+            self._sql("insert into contas (canal, account_id, cliente_slug, nome, ativo) "
+                      "values (%s,%s,%s,%s,true) on conflict (canal, account_id) do update set "
+                      "cliente_slug = excluded.cliente_slug, nome = excluded.nome, "
+                      "ativo = true",
                       (canal, account_id, cliente_slug, nome), escreve=True)
 
     def conta_desativa(self, canal, account_id):
@@ -121,9 +131,28 @@ class Banco(object):
                          "from contas where ativo order by cliente_slug")
 
     # -- metricas -------------------------------------------------------
+    # `criativo_id` faz parte da CHAVE PRIMARIA, e por isso o schema o declara
+    # `not null default ''` (null quebra unique: no Postgres, null nunca e igual
+    # a null, entao a mesma linha entraria infinitas vezes). Mas DEFAULT so vale
+    # quando a coluna e OMITIDA -- mandar null explicito estoura 23502. Um
+    # coletor novo que esqueca a chave derruba a gravacao DEPOIS da coleta
+    # inteira ter rodado. Normalizar aqui, na costura, e mais barato que confiar
+    # em todo coletor lembrar.
+    PADRAO = {"criativo_id": "", "campanha": "(sem nome)", "investimento": 0,
+              "impressoes": 0, "cliques": 0, "conversas": 0, "conversoes": 0}
+
+    @classmethod
+    def _normaliza(cls, linha):
+        saida = dict(linha)
+        for chave, padrao in cls.PADRAO.items():
+            if saida.get(chave) is None:
+                saida[chave] = padrao
+        return saida
+
     def grava_metricas(self, linhas):
         if not linhas:
             return 0
+        linhas = [self._normaliza(l) for l in linhas]
         if self.modo == "supabase":
             self._rest("metricas?on_conflict=canal,account_id,data,campanha,criativo_id",
                        linhas, "POST", "resolution=merge-duplicates,return=minimal")

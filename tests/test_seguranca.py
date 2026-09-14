@@ -452,6 +452,67 @@ class ContagemDeResultado(unittest.TestCase):
         self.assertEqual(etl.conta_resultados(actions), (0, 6))
 
 
+class ReadicionarContaTemQueReativar(unittest.TestCase):
+    """Nao existe `--readicionar`. Entao repetir o `conta` E o jeito obvio de
+    desfazer um `--remover`, e o jeito obvio nao pode falhar calado.
+
+    O upsert atualizava nome e cliente e deixava `ativo` como estava: falso. O
+    CLI imprimia `meta act_123 -> acme`, que e mensagem de sucesso, e a conta
+    seguia fora da carteira e fora do ETL. As DUAS pernas tinham o bug."""
+
+    def test_a_perna_do_postgrest_manda_ativo(self):
+        from magicads.banco import Banco
+        import inspect
+        fonte = inspect.getsource(Banco.conta_salva)
+        self.assertIn('"ativo": True', fonte)
+
+    def test_a_perna_do_sql_manda_ativo(self):
+        from magicads.banco import Banco
+        import inspect
+        fonte = inspect.getsource(Banco.conta_salva)
+        self.assertIn("ativo = true", fonte,
+                      "o do update set nao reativa a conta")
+
+
+class MetricaSemCriativoNaoDerrubaAGravacao(unittest.TestCase):
+    """`criativo_id` faz parte da chave primaria, e o schema o declara
+    `not null default ''` porque null quebra unique (no Postgres null nunca e
+    igual a null, entao a mesma linha entraria infinitas vezes).
+
+    Mas DEFAULT so vale quando a coluna e OMITIDA. Mandar null explicito estoura
+    23502, e um coletor novo que esqueca a chave derruba a gravacao DEPOIS da
+    coleta inteira ter rodado."""
+
+    def test_none_vira_string_vazia(self):
+        from magicads.banco import Banco
+        saida = Banco._normaliza({"canal": "meta", "criativo_id": None})
+        self.assertEqual(saida["criativo_id"], "")
+
+    def test_chave_ausente_ganha_padrao(self):
+        from magicads.banco import Banco
+        saida = Banco._normaliza({"canal": "linkedin", "campanha": None})
+        self.assertEqual(saida["criativo_id"], "")
+        self.assertEqual(saida["campanha"], "(sem nome)")
+        for m in ("investimento", "impressoes", "cliques", "conversas", "conversoes"):
+            self.assertEqual(saida[m], 0)
+
+    def test_valor_de_verdade_nao_e_sobrescrito(self):
+        from magicads.banco import Banco
+        # normalizar nao pode virar zerar: 0 legitimo e None sao coisas
+        # diferentes, e trocar um pelo outro falsifica relatorio.
+        saida = Banco._normaliza({"criativo_id": "120xyz", "investimento": 12.5,
+                                  "cliques": 0})
+        self.assertEqual(saida["criativo_id"], "120xyz")
+        self.assertEqual(saida["investimento"], 12.5)
+        self.assertEqual(saida["cliques"], 0)
+
+    def test_nao_muda_o_dicionario_de_quem_chamou(self):
+        from magicads.banco import Banco
+        original = {"canal": "meta"}
+        Banco._normaliza(original)
+        self.assertNotIn("criativo_id", original)
+
+
 class FiltroDoPostgrestNaoAceitaValorCru(unittest.TestCase):
     """As duas pernas do banco tinham pesos diferentes.
 

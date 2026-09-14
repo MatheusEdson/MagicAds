@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.7.0 — 2026-09-14
+
+**A perna do Supabase rodou contra um Supabase de verdade pela primeira vez.**
+Era o único caminho do projeto que nunca tinha executado, e é o que o README
+oferece **primeiro**, porque é o que não precisa de `pip install` nenhum. Criei
+as 4 tabelas num projeto real, rodei tudo, e derrubei.
+
+Ela achou **dois bugs**, e os dois estavam nas **duas** pernas.
+
+### Readicionar conta não reativava
+
+Não existe `--readicionar`. Então repetir o `conta` é o jeito óbvio de desfazer
+um `--remover`, e era justamente o que não funcionava: o upsert atualizava nome
+e cliente e deixava `ativo` como estava, **falso**.
+
+O pior é o formato da falha. O CLI imprimia `meta act_123 -> acme`, que é
+mensagem de sucesso, e a conta seguia fora da carteira e fora do ETL. Você só
+descobre semanas depois, olhando um relatório que não tem aquele cliente.
+
+### Coletor que esquece `criativo_id` derrubava a gravação inteira
+
+A coluna faz parte da **chave primária**, e por isso o schema a declara
+`not null default ''` — null quebra `unique`, porque no Postgres null nunca é
+igual a null e a mesma linha entraria infinitas vezes.
+
+Só que `DEFAULT` vale quando a coluna é **omitida**; mandar null explícito estoura
+`23502`. Os dois coletores de hoje mandam `""` e passam, mas um coletor novo que
+esquecesse a chave derrubaria a gravação **depois da coleta inteira ter rodado**.
+Normalizar na costura é mais barato que confiar em todo coletor lembrar.
+
+Normalizar não virou zerar: `0` legítimo e `None` são coisas diferentes, e trocar
+um pelo outro falsificaria relatório. Tem teste pra isso.
+
+### O que ficou provado ao vivo
+
+POST com `on_conflict`, GET com filtro de intervalo, PATCH, `carteira`,
+`ultimo_dia_por_conta`, `relatorio`, `relatorio --mudas`, e a idempotência
+(gravar as mesmas 14 linhas duas vezes deixa 14). Tudo nas duas pernas, contra
+o mesmo banco.
+
+E o escape de filtro da 1.5.2 parou de ser teoria: `--cliente 'acme&limit=1'`
+devolve **0 linhas** contra PostgREST real, em vez de virar outro filtro.
+
+124 testes.
 ## 1.6.3 — 2026-09-14
 
 **A tabela de capacidades dava o mesmo `❌` pro Google Ads e pro Google Business,
