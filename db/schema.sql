@@ -6,6 +6,24 @@
 -- A coluna `cliente_slug` já existe em tudo pra que abrir pro cliente,
 -- um dia, seja adicionar RLS e não refazer o modelo.
 --
+-- ⚠ NO SUPABASE ISSO TEM UM PREÇO, e ele não é óbvio: tabela no schema
+-- `public` SEM RLS fica legível por QUALQUER UM que tenha a chave `anon` do
+-- projeto. A `anon` nasce pra ser pública: ela vai no front-end, aparece em
+-- print de tutorial e fica no histórico do navegador. O que está aqui é a sua
+-- carteira inteira e o investimento de cada cliente.
+--
+-- Enquanto isto for só CLI, o combinado é: use a `service_role` no
+-- MAGICADS_SUPABASE_KEY e NÃO distribua a `anon` deste projeto. Se um dia
+-- algum front tocar neste banco, ligue RLS ANTES:
+--
+--   alter table clientes enable row level security;
+--   alter table contas   enable row level security;
+--   alter table metricas enable row level security;
+--   alter table criativos enable row level security;
+--
+-- Sem policy nenhuma, isso já fecha a porta da `anon` e a `service_role`
+-- continua passando (ela ignora RLS). O CLI não quebra.
+--
 -- Uso:
 --   psql "$DATABASE_URL" -f db/schema.sql
 --   (ou cole no SQL Editor do Supabase)

@@ -11,6 +11,7 @@ continua aparecendo, cliente novo demora a entrar).
 """
 import os
 import sys
+import urllib.parse
 from pathlib import Path
 
 from .comum import env, http
@@ -56,6 +57,19 @@ class Banco(object):
         except Exception:
             return False
 
+    @staticmethod
+    def _f(valor):
+        """Um valor indo pra DENTRO de um filtro do PostgREST.
+
+        As duas pernas desta classe tinham pesos diferentes: a de psycopg2
+        passa argumento por fora do SQL, a de PostgREST montava a query com
+        `%s` cru. Um `&` ou um `,` no valor nao da erro -- ele vira OUTRO
+        filtro, e a resposta volta certinha respondendo outra pergunta. Um
+        slug com `&limit=1` truncaria o relatorio em silencio, que e o pior
+        jeito de um numero estar errado.
+        """
+        return urllib.parse.quote(str(valor), safe="")
+
     # -- carteira -------------------------------------------------------
     def cliente_salva(self, slug, nome, nicho=None, cidade=None):
         linha = {"slug": slug, "nome": nome, "nicho": nicho, "cidade": cidade}
@@ -82,7 +96,8 @@ class Banco(object):
 
     def conta_desativa(self, canal, account_id):
         if self.modo == "supabase":
-            self._rest("contas?canal=eq.%s&account_id=eq.%s" % (canal, account_id),
+            self._rest("contas?canal=eq.%s&account_id=eq.%s"
+                       % (self._f(canal), self._f(account_id)),
                        {"ativo": False}, "PATCH", "return=minimal")
         else:
             self._sql("update contas set ativo = false where canal=%s and account_id=%s",
@@ -132,9 +147,10 @@ class Banco(object):
         if self.modo == "supabase":
             q = ("metricas?select=cliente_slug,canal,account_id,data,campanha,"
                  "investimento,impressoes,cliques,conversas,conversoes"
-                 "&data=gte.%s&data=lte.%s&order=data&limit=50000" % (desde, ate))
+                 "&data=gte.%s&data=lte.%s&order=data&limit=50000"
+                 % (self._f(desde), self._f(ate)))
             if slug:
-                q += "&cliente_slug=eq.%s" % slug
+                q += "&cliente_slug=eq.%s" % self._f(slug)
             return [(l["cliente_slug"], l["canal"], l["account_id"], str(l["data"]),
                      l["campanha"], float(l["investimento"] or 0), int(l["impressoes"] or 0),
                      int(l["cliques"] or 0), int(l["conversas"] or 0), int(l["conversoes"] or 0))

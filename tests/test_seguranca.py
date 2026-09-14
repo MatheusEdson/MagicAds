@@ -12,7 +12,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+RAIZ = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(RAIZ))
 
 from magicads import cli, comum, etl  # noqa: E402
 
@@ -449,6 +450,53 @@ class ContagemDeResultado(unittest.TestCase):
         actions = [{"action_type": "lead", "value": "6"},
                    {"action_type": "onsite_conversion.lead_grouped", "value": "6"}]
         self.assertEqual(etl.conta_resultados(actions), (0, 6))
+
+
+class FiltroDoPostgrestNaoAceitaValorCru(unittest.TestCase):
+    """As duas pernas do banco tinham pesos diferentes.
+
+    psycopg2 passa argumento por fora do SQL; o PostgREST montava a query com
+    `%s` cru. E o modo de falhar e traicoeiro: um `&` no valor nao da erro,
+    vira OUTRO filtro, e a resposta volta certinha respondendo outra pergunta.
+    """
+
+    def test_ampersand_nao_vira_outro_filtro(self):
+        from magicads.banco import Banco
+        sujo = "acme&limit=1"
+        self.assertNotIn('&', Banco._f(sujo))
+        self.assertEqual(Banco._f(sujo), "acme%26limit%3D1")
+
+    def test_virgula_nao_passa(self):
+        from magicads.banco import Banco
+        # a virgula separa argumento em `in.(a,b)` e separa condicao em
+        # `or=(...)`, entao ela muda o SENTIDO do filtro.
+        self.assertEqual(Banco._f("a,b"), "a%2Cb")
+
+    def test_ponto_passa_de_proposito(self):
+        from magicads.banco import Banco
+        # so o PRIMEIRO ponto separa operador de valor (`eq.`); os seguintes
+        # fazem parte do valor. Escapar seria escapar demais, e escapar demais
+        # quebra igual: o slug para de casar com o que ja esta gravado.
+        self.assertEqual(Banco._f("acme.com.br"), "acme.com.br")
+
+    def test_slug_normal_continua_legivel(self):
+        from magicads.banco import Banco
+        # escapar demais tambem quebra: se o slug comum mudar, todo relatorio
+        # existente para de casar.
+        self.assertEqual(Banco._f("acme-pneus"), "acme-pneus")
+        self.assertEqual(Banco._f("2026-09-14"), "2026-09-14")
+
+
+class WorkflowNaoPedeEscrita(unittest.TestCase):
+    """GITHUB_TOKEN com permissao padrao pode nascer com write. Este workflow
+    so le, entao declara isso -- e o teste existe pra que nao volte calado."""
+
+    def test_permissions_contents_read(self):
+        yml = RAIZ / ".github" / "workflows" / "provas.yml"
+        texto = yml.read_text(encoding="utf-8")
+        self.assertIn("permissions:", texto)
+        self.assertIn("contents: read", texto)
+        self.assertNotIn("contents: write", texto)
 
 
 if __name__ == "__main__":

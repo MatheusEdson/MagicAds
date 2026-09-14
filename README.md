@@ -193,7 +193,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
 
 ```bash
-python -m unittest discover -s tests   # 107 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 112 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 

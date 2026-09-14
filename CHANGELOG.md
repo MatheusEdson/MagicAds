@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.5.2 — 2026-09-14
+
+O resto da lista da auditoria. Nada aqui vazou nada; são os pontos em que o
+código faria a coisa errada **em silêncio**, que é o que assusta num kit cujo
+produto é um número.
+
+- **As duas pernas do banco tinham pesos diferentes.** A de psycopg2 passa
+  argumento por fora do SQL; a de PostgREST montava a query com `%s` cru. E o
+  modo de falhar é traiçoeiro: um `&` no valor **não dá erro**, vira outro
+  filtro, e a resposta volta certinha respondendo outra pergunta. Um
+  `--cliente 'acme&limit=1'` truncaria o relatório sem avisar. Agora tudo que
+  entra num filtro passa por `Banco._f()`. O `.` segue passando de propósito
+  (só o primeiro separa operador de valor), porque escapar demais quebra
+  igual: o slug para de casar com o que já está gravado.
+
+- **Token do Google revogado derrubava a rodada inteira.** O refresh roda
+  antes do laço, e sem `try` virava traceback — depois do Meta já ter coletado
+  e gravado. O dado não se perdia, mas o resumo e o código de saída sim, e quem
+  lê cron por e-mail via só o stack trace. Agora falha de canal se comporta
+  como falha de conta: entra em `FALHAS` e a rodada segue.
+
+- **O `etl.py` dizia no próprio cabeçalho que tudo passa pelo `limpa()`, e não
+  importava o `limpa`.** Na prática funcionava, porque os erros vinham do
+  `http()` já redigidos, mas era verdade por acidente. Agora é por construção,
+  nos 4 pontos.
+
+- **`schema.sql` explicava por que não tem RLS e não dizia o preço disso no
+  Supabase:** tabela em `public` sem RLS é legível por qualquer um com a chave
+  `anon`, e a `anon` nasce pra ser pública. O que está ali é a carteira inteira
+  e o investimento de cada cliente. O arquivo agora avisa, e traz o `alter
+  table ... enable row level security` pronto — que fecha a `anon` sem quebrar
+  o CLI, porque a `service_role` ignora RLS.
+
+- **CI com `permissions: contents: read`.** Sem isso o `GITHUB_TOKEN` nasce com
+  a permissão padrão do repositório, e qualquer Action de terceiro que entre
+  aqui um dia herda o direito de escrever. Barato agora, caro depois.
+
+112 testes.
 ## 1.5.1 — 2026-09-14
 
 A regra de nome de cliente, que a 1.5.0 tinha acabado de tirar de dentro do

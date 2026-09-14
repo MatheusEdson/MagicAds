@@ -9,6 +9,12 @@ on:
   push:
   pull_request:
 
+# Este workflow so le. Sem isto o GITHUB_TOKEN nasce com a permissao padrao do
+# repositorio, que pode ser write -- e ai qualquer Action de terceiro que entrar
+# aqui um dia herda permissao de escrever no repo. Barato agora, caro depois.
+permissions:
+  contents: read
+
 jobs:
   testes:
     name: testes · py${{ matrix.python }} · ${{ matrix.os }}

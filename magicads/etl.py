@@ -41,7 +41,7 @@ import urllib.request
 from datetime import date, timedelta
 
 from .banco import Banco
-from .comum import META_VER, diz, env, guarda_segredo, http
+from .comum import META_VER, diz, env, guarda_segredo, http, limpa
 
 GADS_VER = os.environ.get("MAGICADS_GADS_VERSION", "v25")
 
@@ -158,7 +158,7 @@ def coleta_meta(banco, carteira, desde, ate, seco):
             try:
                 resp = http(monta(principal))
             except RuntimeError as e:
-                diz("  meta %-22s token principal recusou: %s" % (nome, str(e)[:70]))
+                diz("  meta %-22s token principal recusou: %s" % (nome, limpa(str(e))[:70]))
         if resp is None:
             alt = token_do_cliente(slug)
             if not alt:
@@ -169,7 +169,7 @@ def coleta_meta(banco, carteira, desde, ate, seco):
                 resp = http(monta(alt))
                 diz("  meta %-22s LIDA COM O TOKEN DO CLIENTE" % nome)
             except RuntimeError as e:
-                diz("  meta %-22s FALHOU nos dois tokens: %s" % (nome, str(e)[:70]))
+                diz("  meta %-22s FALHOU nos dois tokens: %s" % (nome, limpa(str(e))[:70]))
                 FALHAS.append("meta %s" % nome)
                 continue
 
@@ -221,7 +221,18 @@ def coleta_google(banco, carteira, desde, ate, seco):
     if not dev:
         diz("  google: sem MAGICADS_GADS_DEVELOPER_TOKEN, pulando o canal")
         return 0
-    at = token_google()
+    # O refresh do Google roda ANTES do laco, entao um token revogado derrubava
+    # a rodada inteira com traceback -- depois do Meta ja ter coletado e
+    # gravado. O dado nao se perdia, mas o resumo e o codigo de saida sim, e
+    # quem le cron por e-mail so via o stack trace. Falha de canal se comporta
+    # como falha de conta: entra em FALHAS e a rodada segue.
+    try:
+        at = token_google()
+    except Exception as e:
+        diz("  google: nao consegui renovar o token: %s" % limpa(str(e))[:120])
+        diz("         (refresh_token revogado ou client_id/secret trocado)")
+        FALHAS.append("google (token)")
+        return 0
     total = 0
 
     # O Google exige intervalo FECHADO em segments.date. Um ">=" sozinho devolve
@@ -247,7 +258,7 @@ def coleta_google(banco, carteira, desde, ate, seco):
                         % (GADS_VER, cid_limpo),
                         data={"query": consulta}, method="POST", headers=cabecalhos)
         except RuntimeError as e:
-            diz("  ads  %-22s FALHOU: %s" % (nome, str(e)[:90]))
+            diz("  ads  %-22s FALHOU: %s" % (nome, limpa(str(e))[:90]))
             FALHAS.append("google %s" % nome)
             continue
 
