@@ -109,8 +109,15 @@ class OsPonteirosApontamParaAlgo(unittest.TestCase):
 
 @unittest.skipUnless(TEM_YAML, "PyYAML nao instalado (roda na CI, no job `agentes`)")
 class ODefinicaoDoAgenteEValida(unittest.TestCase):
-    """O bloco YAML é lido por outra ferramenta. Inválido, ele é ignorado em
-    silêncio, e o agente sobe sem nenhuma das regras que você escreveu."""
+    """Hoje ninguém parseia este bloco: no Claude Code o arquivo inteiro vira
+    prompt e o modelo lê como texto. Então YAML quebrado NÃO apaga as regras --
+    dizer o contrário seria assustar à toa.
+
+    O teste existe por outra razão: um bloco que se anuncia como `yaml` e não é
+    vira armadilha para a primeira ferramenta que tentar lê-lo, e ela vai falhar
+    ou pular em silêncio. E os testes de conteúdo logo abaixo -- id bate com o
+    arquivo, todos se chamam Gandalf, todos conhecem os portões -- precisam de um
+    parse para poder existir."""
 
     def test_todo_agente_parseia(self):
         for caminho in AGENTES:

@@ -36,10 +36,18 @@ inventariam flag e prometeriam automação onde não existe API.
 
 ### Corrigido
 
-- **O bloco YAML de dois agentes era inválido** e ninguém sabia: `description:
-  Monta a semana: picos...` tem dois `:` e o parser para no primeiro. YAML
-  inválido é ignorado em silêncio por quem lê — o agente subia sem nenhuma das
-  regras escritas ali. Agora tem teste.
+- **O bloco YAML de dois agentes não era YAML válido**: `description: Monta a
+  semana: picos...` tem dois `:` e o parser para no primeiro.
+  - Para ser justo com o tamanho do problema: hoje **ninguém parseia esse
+    bloco**. No Claude Code o `.md` inteiro vira prompt e o modelo lê como
+    texto, então as regras continuavam valendo. O bloco inválido não estava
+    apagando nada.
+  - Vale arrumar mesmo assim, por dois motivos: um bloco que se anuncia como
+    `yaml` e não é vira uma armadilha para a primeira ferramenta que tentar lê-lo
+    (um índice, um manifest, um verificador de portões), e ela vai falhar ou
+    pular em silêncio. E os testes de conteúdo — id bate com o arquivo, todos se
+    chamam Gandalf, todos conhecem os portões — precisam de um parse para
+    existir.
 
 ### Mudou
 
