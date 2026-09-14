@@ -18,7 +18,7 @@
 
 ## O que é
 
-MagicAds é o kit de quem opera Meta Ads com a **própria** conta de desenvolvedor, em vez de alugar a de um SaaS. São cinco coisas num repo só:
+MagicAds é o kit de quem opera Meta Ads com a **própria** conta de desenvolvedor, em vez de alugar a de um SaaS. São seis coisas num repo só:
 
 | | |
 |---|---|
@@ -49,12 +49,16 @@ O MCP de ads da Meta (29 ferramentas, aberto em 29/04/2026) é excelente pra per
 git clone https://github.com/MatheusEdson/MagicAds
 cd MagicAds
 
+# 0. a trava que impede voce de empurrar segredo sem querer. Trinta segundos,
+#    e e a unica protecao que roda ANTES do push (a CI so roda depois).
+cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+
 # 1. cofre: um arquivo por cliente, 600
 mkdir -p ~/.magicads/tokens
 printf 'ACME_META_TOKEN=EAA...\n' > ~/.magicads/tokens/acme.env
 chmod 600 ~/.magicads/tokens/acme.env
 
-# 2. banco (Supabase ou Postgres seu)
+# 2. banco (Supabase OU Postgres seu)
 export MAGICADS_SUPABASE_URL=https://xxxx.supabase.co
 export MAGICADS_SUPABASE_KEY=...          # service key, só no servidor
 
@@ -188,7 +192,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
 
 ```bash
-python -m unittest discover -s tests   # 100 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 107 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 
@@ -202,7 +206,7 @@ copia não desconfia.
 | Parte | Estado |
 |---|---|
 | `init`, `cliente`, `conta` — a carteira | ✅ funciona |
-| `diag` — os 6 portões | ✅ funciona, **provado em conta real (22 contas)** |
+| `diag` — os 6 portões | ✅ funciona, **provado em conta real** |
 | `subir` + receitas por tipo de conta | ✅ funciona, **provado em conta real** (campanha criada, conferida e apagada) |
 | `get`, `post`, `pausar`, `ativar`, `imagem` | ✅ funciona |
 | `remover` — apaga e prova por GET | ✅ funciona, **provado em conta real** |

@@ -6,8 +6,8 @@ Este projeto mexe com token que cria anúncio e gasta dinheiro em conta de terce
 
 | Regra | Onde | Por quê |
 |---|---|---|
-| Token nunca é impresso | `limpa()` em `cli.py` e `etl.py` | erro de API **ecoa o parâmetro que você mandou**. É assim que token vai parar no log, no print do terminal e no canal do time |
-| Segredo só vem de variável de ambiente ou do cofre | `env()` em `etl.py` | arquivo de credencial no repo acaba commitado. Sempre |
+| Token nunca é impresso | `limpa()`, **um só**, em `comum.py` | erro de API **ecoa o parâmetro que você mandou**. É assim que token vai parar no log, no print do terminal e no canal do time |
+| Segredo só vem de variável de ambiente ou do cofre | `env()` em `comum.py` | arquivo de credencial no repo acaba commitado. Sempre |
 | `post` valida antes de criar | `cmd_chamada` | `--executar` é explícito, e a ausência dele é o padrão |
 | Falha não vira zero | `FALHAS` em `etl.py` | escrever zero por erro de rede vira "a campanha parou" no relatório |
 | Carteira mora no banco | `Banco.carteira()` | arquivo de carteira é dado de cliente dentro do git, e ainda apodrece |
@@ -22,7 +22,7 @@ chmod 600 ~/.magicads/tokens/cliente.env
 ```
 
 1. **Um arquivo por cliente.** Vazar um não pode ser vazar a frota.
-2. **`chmod 600`.** O CLI avisa quando não está.
+2. **`chmod 600`.** O CLI avisa quando não está — **no Windows ele avisa que NÃO checou**, porque bit de permissão POSIX não existe lá. Quem opera no Windows confere a ACL da pasta na mão (`icacls %USERPROFILE%\.magicads`).
 3. **Nunca em pasta compartilhada.** `~/workspace`, Drive sincronizado, pasta de projeto: costumam ser legíveis pelo grupo, e sincronizam para lugares que você não controla.
 4. **Nunca no repositório.** Uma vez no histórico do git, sai só reescrevendo história, e quem já clonou continua com a cópia.
 
@@ -52,7 +52,7 @@ Para não depender da sua memória, instale o hook:
 cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 ```
 
-⚠️ **Edite a lista `CLIENTES` no `scrub.sh`** com os nomes reais da sua carteira. Regex genérico não sabe que "Acme Pneus" é cliente seu, e é esse o vazamento que dói: não é o token, é o dado do cliente.
+⚠️ **Crie o `.scrub-clientes.local`**, um nome por linha, com os clientes reais da sua carteira. Regex genérico não sabe que "Acme Pneus" é cliente seu, e é esse o vazamento que dói: não é o token, é o dado do cliente. O arquivo está no `.gitignore` de propósito: escrever os nomes dentro do `scrub.sh`, num repo público, seria vazar exatamente o que ele existe para proteger. Sem esse arquivo o scrub avisa, em vez de fingir que checou.
 
 ## Se um token vazou
 

@@ -37,31 +37,60 @@ Copie a lista e mande pra ele. É mais rápido do que descobrir isso no meio da 
 
 ## Subir
 
-`post` roda em **modo validação por padrão**: a Meta confere o payload e não cria nada.
+Subir na Graph são **quatro chamadas encadeadas** (campanha, conjunto, criativo,
+anúncio), cada uma com campo obrigatório que a Meta só cobra depois, com
+mensagem que não diz o que faltou. Montar isso na mão é como se perde a tarde.
+
+Por isso o caminho é a **receita**: um JSON com o que muda, e o resto é trabalho
+do código.
 
 ```bash
-# 1. valida
-python -m magicads post acme act_000000000000000/campaigns \
-  name="[C01] leads setembro" \
-  objective=OUTCOME_LEADS \
-  status=PAUSED \
-  special_ad_categories="[]"
+# 1. sobe o criativo e guarda o hash
+python -m magicads imagem acme act_000000000000000 oferta.jpg
 
-# 2. cria de verdade
-python -m magicads post acme act_000000000000000/campaigns \
-  name="[C01] leads setembro" objective=OUTCOME_LEADS status=PAUSED \
-  special_ad_categories="[]" --executar
+# 2. ENSAIO: imprime os quatro payloads e NAO chama a Meta
+python -m magicads subir receitas/local-whatsapp.json
+
+# 3. pra valer. Tudo nasce PAUSED, e nao existe flag pra subir ligado
+python -m magicads subir receitas/local-whatsapp.json --executar
 ```
+
+O ensaio é **offline de verdade**: ele nem lê o token do cofre. E a receita
+recusa antes de sair da sua máquina o que a Meta recusaria depois: verba abaixo
+do mínimo, falta de geografia, `promoted_object` ausente, criativo sem imagem,
+vídeo sem capa.
+
+Escolha a receita pelo **tipo de conta**, não pelo setor: `b2b-formulario`,
+`local-whatsapp`, `loja-conversao`, `balcao-trafego`, `loja-video-reels`.
+
+Se falhar no meio, ele imprime o que ficou de pé e o comando exato para remover,
+do mais novo para o mais velho. Órfão silencioso é como se descobre, três
+semanas depois, que existe campanha sua parada na conta de um cliente.
+
+```bash
+python -m magicads remover acme 120000000000000000 --executar
+```
+
+`remover` faz `DELETE` de verdade e **prova relendo o objeto por `GET`**. Não use
+`post <id> _method=DELETE`: a Graph responde `{"success": true}` e não apaga
+nada.
 
 ### ⚠️ O aviso que salva dinheiro
 
-**`validate_only` não protege em `/campaigns`.** Nesse endpoint a Meta cria de verdade, com ou sem a flag. Em **conjunto** e **anúncio** a flag funciona como esperado.
+**`validate_only` não protege em `/campaigns`.** Nesse endpoint a Meta cria de
+verdade, com ou sem a flag. Em **conjunto** e **anúncio** a flag funciona como
+esperado.
 
-Consequência prática: campanha é o único objeto onde o "ensaio" já é a peça. Por isso **suba sempre com `status=PAUSED`**, e por isso o CLI imprime o aviso quando o caminho termina em `/campaigns`.
+Consequência prática: campanha é o único objeto onde o "ensaio" já é a peça. Por
+isso o `post` **recusa** `/campaigns` sem `--executar`, em vez de avisar e mandar
+assim mesmo, e por isso o `subir` ensaia **antes** de encostar na API.
 
 ### Campos que a Meta rejeita quando faltam
 
 - `special_ad_categories`: obrigatório, mesmo vazio (`[]`)
+- `is_adset_budget_sharing_enabled`: obrigatório quando a verba está no
+  **conjunto** (ABO). Sem ele a campanha nem nasce, e a mensagem genérica diz só
+  "Invalid parameter": o motivo real vive em `error_user_title`
 - `promoted_object`: obrigatório em objetivo de conversão, mensagem e lead
 - em CTWA, o número do WhatsApp mora dentro do `promoted_object`, não no criativo
 
@@ -93,7 +122,25 @@ python -m magicads get acme act_000000000000000/insights \
   date_preset=last_7d level=campaign
 ```
 
-Para **decidir**, não. Métrica lida no chat é métrica que você não compara com ontem. Para decidir você quer a série no banco (`db/schema.sql`), com o ETL rodando todo dia.
+Para **decidir**, não. Métrica lida no chat é métrica que você não compara com
+ontem. Para decidir você quer a série no banco, e é o que os dois comandos
+abaixo fazem:
+
+```bash
+# enche a serie. Idempotente: rodar dez vezes no mesmo dia nao duplica linha,
+# porque a chave primaria E a chave de idempotencia.
+python -m magicads etl --dias 7 --seco     # mostra e nao escreve
+python -m magicads etl --dias 7
+
+# le a serie em formato de DECISAO, nao de dashboard
+python -m magicads relatorio               # portfolio, com delta vs a janela anterior
+python -m magicads relatorio acme --dias 14
+python -m magicads relatorio --mudas      # quem PAROU de reportar
+```
+
+`--mudas` sai em código 1 só quando alguma conta **emudeceu** (tinha linha e
+parou), nunca quando nunca teve. Dá pra pendurar no cron e só receber e-mail
+quando importa.
 
 > `last_7d` **não inclui hoje**. Se o número não bate com o do gerenciador, é quase sempre isso ou fuso horário da conta.
 
@@ -103,7 +150,7 @@ Para **decidir**, não. Métrica lida no chat é métrica que você não compara
 06:00  cron roda o ETL          → banco enche
  manhã  você abre o agente       → ele lê a série e diz onde tem sangramento
         magicads pausar ...      → freia o que estourou
-        magicads post ... --executar → sobe o substituto, PAUSED
+        magicads subir receita.json  → sobe o substituto, PAUSED
         confere por GET /<id>    → e só então ativa
 ```
 

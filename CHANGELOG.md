@@ -1,5 +1,94 @@
 # Changelog
 
+## 1.5.0 — 2026-09-14
+
+Auditoria antes de mandar o repo pra alguem: um agente de segurança e um de
+exposição leram tudo, incluindo os 156 objetos do histórico. **Segredo: zero.**
+Nenhuma credencial, nenhum identificador real, nenhum nome de cliente, nem no
+HEAD nem em commit nenhum. Nada a rotacionar.
+
+O que apareceu foi pior de um jeito diferente: as **guardas** tinham furo, e
+guarda com furo é a única coisa que dá permissão pra parar de olhar.
+
+### Corrigido — segurança
+
+- **A palavra “exemplo” desarmava o scrub inteiro.** A lista de exceções era
+  aplicada à **linha**, não ao trecho que casou. Num repo escrito em português,
+  todo construído em cima de `exemplos/`, essa é a palavra mais comum que existe.
+  Medido:
+
+  ```
+  # exemplo de configuracao
+  TOKEN=EAA<token de verdade>      ->  “limpo. pode empurrar.”
+  conta de exemplo act_<real>      ->  “limpo. pode empurrar.”
+  ```
+
+  Agora a exceção olha o **trecho casado**: `EAAxxxxxxxx` é placeholder, `EAA<real>`
+  não é, e o comentário em volta não muda nada. Os três casos acima passaram a
+  reprovar.
+
+- **O `post` prometia não criar e criava.** Em `/campaigns` o `validate_only` não
+  protege, e o CLI imprimia “a Meta vai conferir e NÃO criar”, avisava logo
+  abaixo que ali era mentira, e mandava assim mesmo. Divulgar não é controlar:
+  agora **recusa** e manda usar o `subir`, que ensaia offline.
+
+- **O scrub nunca olhava o histórico.** Segredo que entrou num commit e saiu no
+  seguinte some da árvore e continua no pack, e o push leva o pack. O `pre-push`
+  passa a varrer também os commits que estão indo naquele push.
+
+- **Redigir depois de cortar não redige.** O texto do erro era truncado em 400
+  caracteres **antes** do filtro de segredo; se o corte cai no meio do token, o
+  pedaço que sobra não casa com nada e sai na tela. Invertido nos três pontos.
+
+- **A checagem de permissão do cofre era pulada no Windows**, que é onde este
+  projeto é operado, enquanto o `SECURITY.md` prometia que o CLI avisa. Agora ele
+  avisa que **não checou**, e diz como conferir a ACL na mão.
+
+- **A lista de clientes do scrub saiu do repositório.** Escrever os nomes da sua
+  carteira dentro de um script público é vazar exatamente o que ele existe pra
+  proteger. Passa a ler `.scrub-clientes.local`, que está no `.gitignore`. Sem o
+  arquivo, ele **avisa** em vez de fingir que checou.
+
+- Classe nova no scrub: **infra** (IP, caminho de máquina) e **customer id cru**
+  de 10 dígitos, que antes só era pego por coincidência pela regra de telefone.
+  O autoteste passou a plantar **três** iscas, uma delas justamente numa linha com
+  a palavra “exemplo”, e ganhou `trap` pra não deixar isca em disco num Ctrl-C.
+
+### Corrigido — o primeiro comando que o recém-chegado roda
+
+- **O `diag` reprovava conta boa.** O veredito exigia o portão de WhatsApp, que só
+  vale pra CTWA e cuja sonda precisa de uma campanha já existente. Efeito: conta
+  **nova** (sem campanha) e loja que vende **no site** (sem WhatsApp na Página)
+  recebiam “NÃO SUBA AINDA” com todos os portões OK, e a mensagem mandava
+  “resolver o que está FALTA acima” sem nada estar faltando. Agora quem decide são
+  os portões de conta e Página; o WhatsApp vira ressalva (“PODE SUBIR, menos
+  CTWA”). Cinco testes novos, num `veredito()` que virou função pura.
+
+- **Os `docs/` ensinavam o caminho antigo.** Nenhum deles citava `subir`, `etl`,
+  `relatorio` ou `remover`: o “dia a dia” mandava montar campanha na mão com
+  `post`, que é o que o README diz que queima a tarde. Reescritos.
+
+- O comando de limpeza imprimia `<cliente>` literal. Agora sai colável.
+
+### Documentação que dizia o contrário do código
+
+- `SECURITY.md` dizia que o filtro de segredo mora em `cli.py` **e** `etl.py`. Ele
+  é um só, em `comum.py`, e o README se orgulha disso em negrito.
+- `ARQUITETURA.md`: o filtro troca por `<SEGREDO>` (não `<TOKEN>`); são 4 tabelas
+  e **nenhuma** view; e o portão 5 do fluxograma ainda mandava ler Página só pelo
+  portfólio, que é o bug que a 1.3.0 consertou.
+- `README`: “cinco coisas” numa tabela de seis. Num repo cuja tese é “conte o
+  número certo”, esse erro é o que o leitor da área vê sem procurar.
+- O CHANGELOG dizia que `logo.svg` e `mark.svg` compartilham geometria “em vez de
+  duas cópias”. São duas cópias idênticas. Texto corrigido.
+- `gandalf.md` tinha dois STEP 3.
+
+### Instalação
+
+O `cp scripts/hooks/pre-push` virou o **passo 0** do README. É a única proteção
+que roda antes do push; a CI só roda depois, e depois já é público.
+
+107 testes.
 ## 1.4.0 — 2026-09-14
 
 Segunda rodada ao vivo, agora **escrevendo**: ETL gravando num Postgres de
@@ -68,7 +157,7 @@ campo, e o comando de limpeza voltar a apontar para `_method=DELETE`.
 
 ## 1.3.0 — 2026-09-14
 
-Primeira rodada **contra conta real** (22 contas, só leitura). Achou dois bugs
+Primeira rodada **contra conta real** (carteira inteira, só leitura). Achou dois bugs
 que nenhum teste com API de mentira acharia, porque os dois dependem do formato
 que a Meta devolve de verdade.
 
@@ -82,7 +171,8 @@ que a Meta devolve de verdade.
   - É o jeito mais caro de errar: resultado inflado **divide o custo**, então um
     lead de R$ 100 aparece como dois de R$ 50 e você escala o que não estava
     funcionando. Na conta testada, o custo por resultado dobrou depois do
-    conserto.
+    conserto. Para ser claro: o parser errado é **desta ferramenta**, que nasceu
+    em 14/09; nenhum relatório de cliente foi gerado por ele.
   - Agora existem **famílias**: dentro de cada uma o agregado manda e os
     específicos só entram se ele não veio; entre famílias (lead × compra) soma
     normal. Cinco testes de regressão, incluindo o caso real.
@@ -90,16 +180,17 @@ que a Meta devolve de verdade.
 - **O `diag` dava "página FALTA" com dez páginas na mão.** Ele lia página só
   pelas bordas do portfólio (`owned_pages`/`client_pages`). Um system user que
   opera o BM do *cliente* sem ser admin de lá recebe **lista vazia** nessas
-  bordas — 200 com `data:[]`, não erro. Ao vivo: 28 bordas devolveram zero
-  enquanto `me/assigned_pages` devolvia 10 páginas usáveis. Agora usa as duas
+  bordas — 200 com `data:[]`, não erro. Ao vivo: **todas** as bordas de negócio
+  devolveram zero enquanto `me/assigned_pages` devolvia a lista inteira de
+  páginas usáveis. Agora usa as duas
   fontes, deduplica, e diz de onde veio cada uma.
 
 ### Mudou
 
 - **O veredito do `diag` agora conta.** Com token de frota, "forma de pagamento:
   OK" bastava **uma** conta ter forma de pagamento para a linha ficar verde. Na
-  conta real isso escondia que só **11 de 22** estavam prontas para subir. As
-  linhas passam a mostrar `OK (11 de 22)` e há uma linha própria de
+  conta real isso escondia que **metade** das contas não estava pronta para subir. As
+  linhas passam a mostrar a contagem (`OK (x de y)`) e há uma linha própria de
   `contas prontas p/ subir`.
 - A sonda de WhatsApp agora escolhe uma página **com `MESSAGING`** e uma conta
   que realmente pode criar. Pendurada na página errada, ela devolvia outro erro
@@ -189,9 +280,10 @@ inventariam flag e prometeriam automação onde não existe API.
 ### Mudou
 
 - **Nova marca: chapéu de mago**, estilo quadrinho, em ouro — casa com *Gandalf,
-  o Dourado* de um jeito que a varinha não casava. `logo.svg` e `mark.svg`
-  compartilham a mesma geometria em vez de duas cópias, porque duas cópias
-  divergem no primeiro retoque. Legível até 32px.
+  o Dourado* de um jeito que a varinha não casava. `logo.svg` traz a mesma
+  geometria do `mark.svg`, deslocada por `transform`. São dois arquivos, então
+  retocar um e esquecer o outro continua possível: quem mexer num, confira o
+  outro. Legível até 32px.
 
 ## 1.0.0 — 2026-09-14
 

@@ -8,6 +8,23 @@ tokens/
 *.pem
 *.key
 
+# a lista de nomes da SUA carteira, usada pelo scrub. Fica fora do git de
+# proposito: escrever os nomes dentro do scrub, num repo publico, seria vazar
+# exatamente o que ele existe pra proteger.
+.scrub-clientes.local
+# a isca do autoteste do scrub (.scrub-autoteste.tmp) NAO entra aqui de
+# proposito: `git grep --untracked` respeita o .gitignore, entao ignora-la
+# cegaria o proprio autoteste -- e um autoteste cego e pior que nenhum. Ela e
+# apagada por `trap` no fim do script, ate em Ctrl-C; se sobrar, o scrub grita,
+# que e exatamente o que se quer de um arquivo com `EAA...` dentro.
+
+# criativo: material do cliente, e o scrub le texto, imagem nao.
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.mov
+
 # dado de cliente
 carteira.py
 clientes.py

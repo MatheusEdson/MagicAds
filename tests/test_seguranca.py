@@ -131,6 +131,25 @@ class PostValidaAntesDeCriar(Isolado):
                         ["cliente", "act_000000000000000/adsets", "name=teste", "--executar"])
         self.assertNotIn("execution_options", self.capturado["campos"])
 
+    def test_campanha_sem_executar_e_RECUSADA(self):
+        """Aqui nao da pra "avisar e mandar".
+
+        `validate_only` nao protege em /campaigns: a Meta cria de verdade, com a
+        flag ou sem ela. A versao anterior imprimia "a Meta vai conferir e NAO
+        criar", avisava logo abaixo que ali era mentira, e mandava assim mesmo.
+        Quem leu a primeira linha ficava com campanha de verdade na conta do
+        cliente. Divulgar nao e controlar: tem que recusar."""
+        with self.assertRaises(SystemExit):
+            cli.cmd_chamada("POST", ["cliente", "act_000000000000000/campaigns",
+                                     "name=teste"])
+        self.assertEqual(self.capturado, {}, "recusou e mandou assim mesmo")
+
+    def test_campanha_com_executar_passa(self):
+        cli.cmd_chamada("POST", ["cliente", "act_000000000000000/campaigns",
+                                 "name=teste", "--executar"])
+        self.assertEqual(self.capturado["caminho"], "act_000000000000000/campaigns")
+        self.assertNotIn("execution_options", self.capturado["campos"])
+
     def test_get_nunca_ganha_validate_only(self):
         cli.cmd_chamada("GET", ["cliente", "me/adaccounts", "fields=name"])
         self.assertNotIn("execution_options", self.capturado["campos"])
@@ -210,6 +229,47 @@ class ApagarNaoPodeMentir(Isolado):
         ordens = texto[texto.index("Pra remover"):]
         self.assertLess(ordens.index("120000000000000002"), ordens.index("120000000000000001"))
 
+
+class OVereditoDoDiag(unittest.TestCase):
+    """O `diag` e o PRIMEIRO comando que o README manda rodar. Se ele responde
+    errado, a conclusao natural de quem chegou agora e "a ferramenta esta
+    quebrada", e nao "falta uma coisa na minha conta".
+
+    O portao de WhatsApp so vale pra CTWA, entao ele NAO pode reprovar quem vai
+    subir campanha de site. E a sonda dele precisa de uma campanha ja existente
+    pra se pendurar, o que conta nova nunca tem.
+    """
+
+    def texto(self, prontas, paginas, zap):
+        return chr(10).join(cli.veredito(prontas, paginas, zap))
+
+    def test_conta_nova_sem_campanha_pode_subir(self):
+        # Tudo OK nos outros portoes e a sonda sem onde rodar: isso e PODE SUBIR.
+        s = self.texto(["act_1"], [{"id": "1"}], None)
+        self.assertIn("PODE SUBIR", s)
+        self.assertIn("NAO TESTADO", s)
+
+    def test_loja_sem_whatsapp_pode_subir(self):
+        # Quem vende no site nao precisa de WhatsApp na Pagina.
+        s = self.texto(["act_1"], [{"id": "1"}], False)
+        self.assertIn("PODE SUBIR", s)
+        self.assertIn("MENOS CTWA", s)
+
+    def test_sem_conta_pronta_nao_sobe(self):
+        s = self.texto([], [{"id": "1"}], True)
+        self.assertIn("NAO SUBA AINDA", s)
+        self.assertNotIn("PODE SUBIR", s)
+
+    def test_sem_pagina_nao_sobe(self):
+        s = self.texto(["act_1"], [], True)
+        self.assertIn("NAO SUBA AINDA", s)
+
+    def test_nunca_manda_resolver_o_que_nao_esta_faltando(self):
+        # O caso que existia: cinco portoes OK, nenhuma linha dizendo FALTA, e
+        # mesmo assim "resolva o que esta FALTA acima".
+        for zap in (None, False, True):
+            s = self.texto(["act_1"], [{"id": "1"}], zap)
+            self.assertNotIn("resolva o que esta FALTA", s)
 
 class Cofre(Isolado):
     def setUp(self):

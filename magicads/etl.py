@@ -30,7 +30,7 @@ USO
   python -m magicads etl --seco               # nao escreve, so mostra
 
   # Postgres seu, sem Supabase:
-  export DATABASE_URL=postgresql://user:senha@host:5432/base
+  export DATABASE_URL=postgresql://usuario:xxxxxxxx@host:5432/base
   python -m magicads etl                      # usa psycopg2 se estiver instalado
 """
 import json

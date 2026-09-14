@@ -81,7 +81,7 @@ flowchart TD
   E -->|"sim"| P{"4. tem forma<br/>de pagamento?"}
   P -->|"não"| P1["conta nova nasce sem,<br/>e account_status=1 NÃO avisa"]
   P -->|"sim"| G{"5. tem Página?"}
-  G -->|"não"| G1["ler pelo portfólio<br/>(owned_pages/client_pages),<br/>promote_pages mente em silêncio"]
+  G -->|"não"| G1["ler pelas DUAS fontes:<br/>bordas do negócio E me/assigned_pages.<br/>Cada uma sozinha devolve lista vazia<br/>em caso normal, e 200 com data:[] não é erro"]
   G -->|"sim"| W{"6. a Página tem<br/>WhatsApp conectado?"}
   W -->|"não"| W1["subcode 2446886.<br/>A task MESSAGING NÃO supre isso.<br/>Conserto é do cliente"]
   W -->|"sim"| OK["PODE SUBIR"]
@@ -115,12 +115,13 @@ sequenceDiagram
     Você->>AG: "e aí, o que faço hoje?"
     AG->>DB: lê a série
     AG-->>Você: "campanha X passou 2x o CPA alvo:<br/>suspender. Criativo Y na frente: escalar"
-    Você->>CLI: magicads post cliente act_x/... (valida)
-    CLI->>Meta: POST com validate_only
-    Meta-->>CLI: ok, não criou
+    Você->>CLI: magicads subir receita.json (ensaio)
+    Note over CLI: ensaio é offline: nem lê o token
+    CLI-->>Você: os 4 payloads, na tela
     Você->>CLI: mesma linha + --executar
-    CLI->>Meta: POST de verdade
-    Note over CLI,Meta: sempre nasce PAUSED
+    CLI->>Meta: campanha, conjunto, criativo, anúncio
+    CLI->>Meta: GET /<id> de cada um
+    Note over CLI,Meta: sempre nasce PAUSED, e a conferência<br/>é por id, nunca por listagem
 ```
 
 **Por que o número vem do banco e não do chat:** métrica lida na conversa é métrica que você não consegue comparar com ontem. O banco existe pra ter série, não pra ter dashboard.
@@ -165,7 +166,7 @@ flowchart TB
 
 Regras que o código já aplica sozinho:
 
-1. **O token nunca é impresso.** Existe um filtro na saída que troca o valor por `<TOKEN>`, inclusive dentro de mensagem de erro. Erro da Meta ecoa parâmetro, e é assim que token vaza em log.
+1. **O token nunca é impresso.** Existe um filtro na saída que troca o valor por `<SEGREDO>`, inclusive dentro de mensagem de erro. Erro da Meta ecoa parâmetro, e é assim que token vaza em log.
 2. **Um arquivo por cliente**, não um `.env` gigante. Perder um não é perder todos.
 3. **`chmod 600`**, e o CLI avisa quando não está.
 4. **Nada de token em `~/workspace` ou pasta compartilhada:** aquilo costuma ser legível pelo grupo.
@@ -176,7 +177,7 @@ Regras que o código já aplica sozinho:
 
 O schema completo de um painel multi-cliente com login tem umas 12 tabelas, views de portfólio, RLS por tenant, log de acesso e trilha de encerramento. **Isso existe porque o cliente entra e vê o dado dele.**
 
-O MagicAds v1 é do **operador**. Então são **4 tabelas e uma view**:
+O MagicAds v1 é do **operador**. Então são **4 tabelas, e nenhuma view**:
 
 ```mermaid
 erDiagram

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Trava o push quando o scrub reprova.
+# Trava o push quando o scrub reprova, ou quando um commit que esta indo agora
+# carrega segredo.
 #
 # Instale com:
 #   cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
@@ -14,12 +15,37 @@ if [ ! -x "$raiz/scripts/scrub.sh" ] && [ ! -f "$raiz/scripts/scrub.sh" ]; then
 fi
 
 echo "pre-push: rodando scrub..."
-if bash "$raiz/scripts/scrub.sh"; then
+scrub_ok=0
+bash "$raiz/scripts/scrub.sh" || scrub_ok=1
+
+# O scrub le a ARVORE DE TRABALHO. Segredo que entrou num commit e saiu no
+# commit seguinte some da arvore e CONTINUA no pack -- e o push leva o pack.
+# Num repo publico isso e definitivo: vazou, e apagar depois nao desfaz.
+# Entao aqui olhamos tambem o que esta indo agora.
+hist_ok=0
+if base=$(git rev-parse --verify --quiet "@{u}" 2>/dev/null); then
+    if [ -n "$(git log --format=%H "$base"..HEAD 2>/dev/null)" ]; then
+        achado=$(git log -p "$base"..HEAD 2>/dev/null |
+                 grep -nEi '^\+.*(EAA[A-Za-z0-9]{20,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY)' |
+                 grep -vE 'x{8,}|0{8,}' || true)
+        if [ -n "$achado" ]; then
+            echo
+            echo "pre-push: SEGREDO num COMMIT que esta indo agora."
+            echo "$achado" | head -5 | sed 's/^/    /'
+            echo "    Tirar da arvore NAO resolve: o commit vai junto no pack."
+            hist_ok=1
+        fi
+    fi
+else
+    echo "pre-push: sem upstream ainda; so a arvore de trabalho foi lida."
+fi
+
+if [ "$scrub_ok" -eq 0 ] && [ "$hist_ok" -eq 0 ]; then
     exit 0
 fi
 
 echo
-echo "PUSH BLOQUEADO. O scrub achou segredo ou dado de cliente."
+echo "PUSH BLOQUEADO. Achei segredo ou dado de cliente."
 echo "Corrija e tente de novo. Se for falso positivo, ajuste scripts/scrub.sh"
 echo "em vez de usar --no-verify: a proxima pessoa vai tropecar no mesmo ponto."
 exit 1

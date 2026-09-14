@@ -74,7 +74,10 @@ def http(url, data=None, headers=None, method=None, tentativas=3, form=None):
                 bruto = r.read()
                 return json.loads(bruto) if bruto else {}
         except urllib.error.HTTPError as e:
-            texto = e.read().decode("utf-8", "replace")[:400]
+            # limpa() ANTES de cortar. O filtro casa substring exata: se o
+            # corte cair no meio do token, o pedaco que sobra nao casa com
+            # nada e sai limpo na tela.
+            texto = limpa(e.read().decode("utf-8", "replace"))[:400]
             if e.code in (429, 500, 503) and n < tentativas - 1:
                 time.sleep(3 * (n + 1))
                 continue
@@ -129,7 +132,10 @@ def http_arquivo(url, campos, campo_arquivo, caminho, tentativas=2):
                 bruto = r.read()
                 return json.loads(bruto) if bruto else {}
         except urllib.error.HTTPError as e:
-            texto = e.read().decode("utf-8", "replace")[:400]
+            # limpa() ANTES de cortar. O filtro casa substring exata: se o
+            # corte cair no meio do token, o pedaco que sobra nao casa com
+            # nada e sai limpo na tela.
+            texto = limpa(e.read().decode("utf-8", "replace"))[:400]
             if e.code in (429, 500, 503) and n < tentativas - 1:
                 time.sleep(5)
                 continue

@@ -335,14 +335,14 @@ def executa(r, token, p_campanha, p_conjunto, criativos, anuncios):
             diz("subcode 2446886: a Pagina NAO tem conta de WhatsApp conectada.")
             diz("A tarefa MESSAGING nao supre isso. Conserto e do CLIENTE, no Business")
             diz("Suite: Configuracoes da Pagina -> WhatsApp -> conectar o numero.")
-        limpeza(criados)
+        limpeza(criados, r.get("cliente") or "<cliente>")
         return 1
 
     try:
         resp = chama("%s/adsets" % conta, p_conjunto, token)
     except RuntimeError as e:
         diz("conjunto FALHOU depois de validar: %s" % limpa(e))
-        limpeza(criados)
+        limpeza(criados, r.get("cliente") or "<cliente>")
         return 1
     id_conjunto = resp["id"]
     criados.append(("conjunto", id_conjunto))
@@ -371,7 +371,7 @@ def executa(r, token, p_campanha, p_conjunto, criativos, anuncios):
     return 0
 
 
-def limpeza(criados):
+def limpeza(criados, cliente="<cliente>"):
     """Nao apaga sozinho: apagar por conta propria e como o script decidir que a
     sua campanha nao serve. Mostra o que ficou de pe e o comando exato.
 
@@ -387,7 +387,7 @@ def limpeza(criados):
     diz("")
     diz("Pra remover, do mais novo pro mais velho:")
     for tipo, ident in reversed(criados):
-        diz("   python -m magicads remover <cliente> %s --executar" % ident)
+        diz("   python -m magicads remover %s %s --executar" % (cliente, ident))
 
 
 def resumo(criados, token):

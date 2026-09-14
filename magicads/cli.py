@@ -62,6 +62,7 @@ from .comum import GRAPH as API
 from .comum import guarda_segredo, limpa
 
 COFRE = Path(os.environ.get("MAGICADS_COFRE", os.path.expanduser("~/.magicads/tokens")))
+AVISOU_PERMISSAO = []   # avisa uma vez por processo, nao a cada token lido
 Q1 = chr(39)
 
 
@@ -96,7 +97,17 @@ def token(cliente):
     if len(alvo) > 1:
         sys.exit("%r casa com %s. Seja especifico." % (cliente, [p.stem for p in alvo]))
     p = alvo[0]
-    if os.name != "nt" and oct(p.stat().st_mode)[-3:] not in ("600", "400"):
+    # Bit POSIX nao existe no Windows, e o SECURITY.md promete "o CLI avisa
+    # quando nao esta 600". Ficar calado justamente na plataforma onde este
+    # projeto e operado transforma a promessa em decoracao: entao aqui ele avisa
+    # que NAO checou, uma vez por processo.
+    if os.name == "nt":
+        if not AVISOU_PERMISSAO:
+            AVISOU_PERMISSAO.append(1)
+            print("AVISO: no Windows nao da pra checar permissao de arquivo por bit.",
+                  file=sys.stderr)
+            print("       Confira a ACL na mao: icacls %s" % COFRE, file=sys.stderr)
+    elif oct(p.stat().st_mode)[-3:] not in ("600", "400"):
         print("AVISO: %s nao esta 600. Corrija com chmod 600." % p.name, file=sys.stderr)
     for linha in p.read_text(encoding="utf-8").splitlines():
         linha = linha.strip()
@@ -141,7 +152,7 @@ def chamada(metodo, caminho, campos):
             er = {"message": "HTTP %s" % e.code}
         return None, er
     except Exception as e:
-        return None, {"message": str(e)[:200]}
+        return None, {"message": limpa(str(e))[:200]}
 
 
 def erro_legivel(er):
@@ -180,12 +191,56 @@ def cmd_clientes():
     print("proximo passo: python -m magicads diag <cliente>")
 
 
+def veredito(prontas, paginas, zap):
+    """As linhas finais do diag. Funcao pura, pra poder ter teste.
+
+    A regra que mudou: o portao de WhatsApp **nao decide** se da pra subir,
+    porque ele so vale pra CTWA. Antes o veredito exigia `zap is True`, e isso
+    reprovava dois casos normais:
+
+      - conta NOVA, sem nenhuma campanha: a sonda precisa de uma campanha pra se
+        pendurar (validate_only nao protege em /campaigns), entao `zap` fica
+        indefinido e o veredito dizia "NAO SUBA AINDA" com todos os portoes OK;
+      - loja que vende no site e nao tem WhatsApp na Pagina: reprovada por um
+        portao que nao tem nada a ver com a campanha dela.
+
+    Nos dois, o PRIMEIRO comando que o README manda rodar respondia errado, que
+    e o jeito mais rapido de alguem concluir que a ferramenta esta quebrada.
+    """
+    linhas = []
+    if zap is True:
+        linhas.append("  %-30s OK (conjunto CTWA validou)" % "WhatsApp na pagina")
+    elif zap is False:
+        linhas.append("  %-30s NAO  -> subcode 2446886" % "WhatsApp na pagina")
+        linhas.append("     A pagina NAO tem conta de WhatsApp conectada. A task MESSAGING nao")
+        linhas.append("     supre isso. Conserto do CLIENTE, no Business Suite: Configuracoes")
+        linhas.append("     da Pagina -> WhatsApp -> conectar o numero e confirmar o codigo.")
+    else:
+        linhas.append("  %-30s NAO TESTADO" % "WhatsApp na pagina")
+        linhas.append("     A sonda precisa de uma campanha ja existente na conta pra se")
+        linhas.append("     pendurar, e conta nova nao tem. Se a sua primeira campanha for de")
+        linhas.append("     WhatsApp, rode o diag de novo depois de criar a campanha.")
+
+    linhas.append("")
+    if prontas and paginas:
+        linhas.append("  PODE SUBIR. Use `subir <receita.json>`: ensaia antes e nasce PAUSED.")
+        if zap is False:
+            linhas.append("  MENOS CTWA: sem WhatsApp na Pagina, conjunto com destino WHATSAPP")
+            linhas.append("  falha. Site, formulario e trafego sobem normal.")
+        elif zap is None:
+            linhas.append("  CTWA e o unico que fica em duvida ate a sonda rodar.")
+    else:
+        linhas.append("  NAO SUBA AINDA: resolva o que esta FALTA acima.")
+        linhas.append("  Metade dos itens acima e acao do CLIENTE, nao sua. Mande a lista pra ele.")
+    return linhas
+
+
 def cmd_diag(cliente):
     """Os 6 portoes. Cinco deles nao aparecem antes de voce tentar subir."""
     nome, tok = token(cliente)
     usa(tok)
     print("=" * 92)
-    print("DIAGNOSTICO  ·  %s  ·  identidade = token do cofre  ·  so leitura" % nome)
+    print("DIAGNOSTICO  ·  %s  ·  identidade = token do cofre  ·  leitura + 1 validacao sem criar" % nome)
     print("=" * 92)
 
     # portao 1: o token abre?
@@ -258,7 +313,6 @@ def cmd_diag(cliente):
     do_portfolio = len(achadas)
 
     ap, er = chamada("GET", "me/assigned_pages", {"fields": "id,name,tasks", "limit": "50"})
-    com_messaging = False
     if er:
         print("  me/assigned_pages: ERRO %s" % erro_legivel(er)[:60])
     else:
@@ -266,7 +320,6 @@ def cmd_diag(cliente):
         print("\n  na mao deste token (me/assigned_pages): %d" % len(it))
         for x in it:
             tarefas = x.get("tasks") or []
-            com_messaging = com_messaging or ("MESSAGING" in tarefas)
             atual = achadas.get(x.get("id"))
             if atual:
                 atual["tasks"] = tarefas
@@ -341,23 +394,8 @@ def cmd_diag(cliente):
                 print("  %-30s sonda inconclusiva: %s" % ("WhatsApp na pagina",
                                                           erro_legivel(er)[:60]))
 
-    if zap is True:
-        print("  %-30s OK (conjunto CTWA validou)" % "WhatsApp na pagina")
-    elif zap is False:
-        print("  %-30s FALTA  -> subcode 2446886" % "WhatsApp na pagina")
-        print("     A pagina NAO tem conta de WhatsApp conectada. A task MESSAGING nao supre")
-        print("     isso. Conserto do CLIENTE, no Business Suite: Configuracoes da Pagina ->")
-        print("     WhatsApp -> conectar o numero e confirmar com o codigo que chega nele.")
-    elif com_messaging:
-        print("  %-30s NAO TESTADO (sem campanha na conta)" % "WhatsApp na pagina")
-        print("     A pagina tem MESSAGING, mas isso NAO prova WhatsApp conectado. Crie uma")
-        print("     campanha primeiro e rode o diag de novo, que ai a sonda roda.")
-
-    if prontas and paginas and zap is True:
-        print("\n  PODE SUBIR. Use `subir <receita.json>`: ensaia antes e nasce PAUSED.")
-    else:
-        print("\n  NAO SUBA AINDA: resolva o que esta FALTA acima.")
-        print("  Metade dos itens acima e acao do CLIENTE, nao sua. Mande a lista pra ele.")
+    for linha in veredito(prontas, paginas, zap):
+        print(linha)
 
 
 def cmd_chamada(metodo, argv):
@@ -379,11 +417,17 @@ def cmd_chamada(metodo, argv):
 
     if metodo == "POST" and not executar:
         campos["execution_options"] = json.dumps(["validate_only"])
-        print("MODO VALIDACAO: a Meta vai conferir e NAO criar. Use --executar pra valer.")
         if caminho.endswith("/campaigns"):
-            print("AVISO: validate_only NAO protege em /campaigns. A Meta cria de verdade.")
-            print("       Se e campanha, confira o payload agora: com --executar ou sem ele,")
-            print("       este endpoint cria. Suba sempre com status=PAUSED.")
+            # Divulgar nao e controlar. A versao anterior imprimia "a Meta vai
+            # conferir e NAO criar", avisava logo abaixo que em /campaigns isso
+            # e mentira, e mandava do mesmo jeito. Quem leu a primeira linha e
+            # confiou ficava com uma campanha de verdade na conta do cliente.
+            sys.exit(
+                "RECUSADO: validate_only NAO protege em /campaigns. A Meta cria de"
+                " verdade, com a flag ou sem ela, entao aqui nao existe ensaio."
+                "\n  - pra montar sem risco: `subir <receita.json>`, que ensaia offline;"
+                "\n  - se e isto mesmo: repita com --executar e status=PAUSED.")
+        print("MODO VALIDACAO: a Meta vai conferir e NAO criar. Use --executar pra valer.")
     elif metodo == "POST":
         print("MODO REAL: isso CRIA de verdade em %s." % nome)
 
