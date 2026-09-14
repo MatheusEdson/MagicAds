@@ -184,6 +184,80 @@ class Cofre(Isolado):
             cli.token("acme")
 
 
+class FreioGeral(Isolado):
+    """`pausar --tudo` mexe em varias campanhas de uma vez. O que nao pode
+    acontecer e ele encostar em conta que nao e do cliente."""
+
+    def setUp(self):
+        Isolado.setUp(self)
+        self.chamadas = []
+        self._chamada, self._token = cli.chamada, cli.token
+        self.ativas = {}          # conta -> [campanhas]
+        self.efetivo = {}         # id -> effective_status depois do POST
+
+        def falsa(metodo, caminho, campos):
+            self.chamadas.append((metodo, caminho, dict(campos)))
+            if metodo == "GET" and caminho.endswith("/campaigns"):
+                conta = caminho.split("/")[0]
+                return {"data": self.ativas.get(conta, [])}, None
+            if metodo == "GET":
+                return {"id": caminho,
+                        "effective_status": self.efetivo.get(caminho, "PAUSED")}, None
+            return {"success": True}, None
+
+        cli.chamada = falsa
+        cli.token = lambda c: ("acme", TOKEN_FALSO)
+
+    def tearDown(self):
+        cli.chamada, cli.token = self._chamada, self._token
+        Isolado.tearDown(self)
+
+    def roda(self, argv):
+        import io
+        antigo, buf = sys.stdout, io.StringIO()
+        sys.stdout = buf
+        try:
+            codigo = cli.cmd_freio(argv)
+        finally:
+            sys.stdout = antigo
+        return codigo, buf.getvalue()
+
+    def test_sem_carteira_e_sem_act_explicito_ele_para(self):
+        # O contrario disto seria derivar de me/adaccounts e pausar a campanha
+        # do cliente vizinho.
+        os.environ.pop("MAGICADS_SUPABASE_URL", None)
+        os.environ.pop("DATABASE_URL", None)
+        with self.assertRaises(SystemExit):
+            self.roda(["acme"])
+        self.assertFalse([c for c in self.chamadas if "adaccounts" in c[1]])
+
+    def test_act_explicito_e_respeitado(self):
+        self.ativas["act_000000000000002"] = [{"id": "120000000000000001", "name": "[C01]"}]
+        codigo, texto = self.roda(["acme", "act_000000000000002"])
+        self.assertEqual(codigo, 0)
+        self.assertIn("pausada 120000000000000001", texto)
+        posts = [c for c in self.chamadas if c[0] == "POST"]
+        self.assertEqual(posts[0][2]["status"], "PAUSED")
+
+    def test_lista_vazia_nao_e_declarada_como_tudo_certo(self):
+        # data:[] com HTTP 200 e o que a Meta devolve sob rate limit. Dizer
+        # "nada ativo" aqui e mandar a pessoa dormir com a conta gastando.
+        codigo, texto = self.roda(["acme", "act_000000000000002"])
+        self.assertEqual(codigo, 0)
+        self.assertIn("rate limit", texto)
+
+    def test_pos_confere_por_get_e_denuncia_quem_nao_parou(self):
+        self.ativas["act_000000000000002"] = [{"id": "120000000000000001", "name": "[C01]"}]
+        self.efetivo["120000000000000001"] = "ACTIVE"    # a Meta aceitou e nao aplicou
+        codigo, texto = self.roda(["acme", "act_000000000000002"])
+        self.assertEqual(codigo, 1)
+        self.assertIn("AINDA ATIVAS", texto)
+
+    def test_ativar_tudo_nao_existe(self):
+        with self.assertRaises(SystemExit):
+            cli.cmd_status(["acme", "--tudo"], "ACTIVE")
+
+
 class ContagemDeResultado(unittest.TestCase):
     def test_conta_conversa_e_conversao(self):
         actions = [

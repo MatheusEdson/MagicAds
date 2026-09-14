@@ -1,33 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 128" width="520" height="128" role="img" aria-label="MagicAds">
+  <title>MagicAds</title>
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#7C5CFF"/>
       <stop offset="55%" stop-color="#A855F7"/>
       <stop offset="100%" stop-color="#F472B6"/>
     </linearGradient>
-    <linearGradient id="wand" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".55"/>
-      <stop offset="100%" stop-color="#FFFFFF"/>
+    <linearGradient id="ouro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="45%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#D97706"/>
     </linearGradient>
   </defs>
 
-  <!-- marca -->
-  <rect x="8" y="16" width="96" height="96" rx="26" fill="url(#g)"/>
-
-  <!-- varinha -->
-  <g transform="rotate(-38 56 64)">
-    <rect x="50" y="34" width="12" height="58" rx="6" fill="url(#wand)"/>
-    <rect x="50" y="76" width="12" height="16" rx="6" fill="#FFFFFF" opacity=".35"/>
+  <!-- a marca e a mesma geometria de assets/mark.svg, so reduzida.
+       Duas copias divergem no primeiro retoque; esta e literalmente a mesma. -->
+  <g transform="translate(8 16) scale(0.75)">
+    <rect x="0" y="0" width="128" height="128" rx="32" fill="url(#fundo)"/>
+    <g stroke="#1E1B4B" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M40 88 C44 62 54 40 70 26 C78 19 90 14 96 20 C98 27 88 32 80 34 C79 52 80 70 84 88 Z" fill="url(#ouro)"/>
+    </g>
+    <path d="M46 84 C50 62 58 44 68 32 C64 46 57 64 55 85 Z" fill="#FFFFFF" opacity=".32"/>
+    <g stroke="#1E1B4B" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M50 58 C60 64 70 64 80 58 L81 71 C71 77 59 77 49 71 Z" fill="#1E1B4B"/>
+      <path d="M14 92 C14 82 35 76 62 76 C89 76 110 82 110 92 C110 102 89 108 62 108 C35 108 14 102 14 92 Z" fill="url(#ouro)"/>
+    </g>
+    <path d="M67 40c.87 3.87 2.13 5.13 6 6-3.87.87-5.13 2.13-6 6-.87-3.87-2.13-5.13-6-6 3.87-.87 5.13-2.13 6-6z" fill="#1E1B4B"/>
+    <path d="M22 22c1.17 5.17 2.83 6.83 8 8-5.17 1.17-6.83 2.83-8 8-1.17-5.17-2.83-6.83-8-8 5.17-1.17 6.83-2.83 8-8z" fill="#FFFFFF"/>
+    <path d="M114 34.5c.8 3.55 1.95 4.7 5.5 5.5-3.55.8-4.7 1.95-5.5 5.5-.8-3.55-1.95-4.7-5.5-5.5 3.55-.8 4.7-1.95 5.5-5.5z" fill="#FFFFFF" opacity=".85"/>
   </g>
-
-  <!-- faiscas: 4 estrelas de 4 pontas -->
-  <path d="M78 34c1.4 6.2 3.4 8.2 9.6 9.6-6.2 1.4-8.2 3.4-9.6 9.6-1.4-6.2-3.4-8.2-9.6-9.6 6.2-1.4 8.2-3.4 9.6-9.6z" fill="#FFFFFF"/>
-  <path d="M92 56c.9 4 2.2 5.3 6.2 6.2-4 .9-5.3 2.2-6.2 6.2-.9-4-2.2-5.3-6.2-6.2 4-.9 5.3-2.2 6.2-6.2z" fill="#FFFFFF" opacity=".85"/>
-  <path d="M34 84c.7 3.2 1.7 4.2 4.9 4.9-3.2.7-4.2 1.7-4.9 4.9-.7-3.2-1.7-4.2-4.9-4.9 3.2-.7 4.2-1.7 4.9-4.9z" fill="#FFFFFF" opacity=".7"/>
 
   <!-- wordmark -->
   <text x="126" y="80" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="48" font-weight="700" fill="#0F172A" letter-spacing="-1">
-    Magic<tspan fill="url(#g)">Ads</tspan>
+    Magic<tspan fill="url(#fundo)">Ads</tspan>
   </text>
   <text x="128" y="102" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#64748B" letter-spacing="3.2">SEU APP, SEU TOKEN, SUA OPERACAO</text>
 </svg>

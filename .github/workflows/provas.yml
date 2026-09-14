@@ -1,0 +1,59 @@
+# As garantias do README, verificadas a cada push.
+#
+# Tem hook de pre-push em scripts/hooks/, mas hook depende de quem clonou ter
+# instalado. Quem forka nao instala, e ai a promessa de "nenhum segredo no repo"
+# passa a valer so na sua maquina.
+name: provas
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  testes:
+    name: testes · py${{ matrix.python }} · ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 3.8 e o piso que o README promete. Prometer versao e nunca rodar
+          # nela e o mesmo que dizer "sem dependencia" sem nunca ter instalado
+          # limpo. (3.8 nao existe no runner 24.04, por isso o 22.04 fixo.)
+          - { os: ubuntu-22.04, python: "3.8" }
+          - { os: ubuntu-latest, python: "3.12" }
+          # Windows porque e onde este projeto e operado de verdade, e caminho
+          # e encoding sao justamente o que quebra so la.
+          - { os: windows-latest, python: "3.12" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: sem pip install, de proposito
+        run: python -m unittest discover -s tests -v
+
+  scrub:
+    name: nenhum segredo, nenhum dado de cliente
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/scrub.sh
+
+  receitas:
+    name: as receitas de exemplo sobem
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Ensaio nao chama a Meta: monta os payloads e imprime. Exemplo quebrado
+      # e pior que exemplo ausente, porque quem copia nao desconfia.
+      - name: ensaio de cada receita
+        run: |
+          for r in receitas/*.json; do
+            echo "::group::$r"
+            python -m magicads subir "$r"
+            echo "::endgroup::"
+          done

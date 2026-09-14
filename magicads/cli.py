@@ -25,7 +25,7 @@ O CICLO COMPLETO
   subir <receita.json>       campanha + conjunto + criativo + anuncio
   etl --dias 7               enche a serie
   relatorio                  le a serie em formato de decisao
-  pausar / ativar            o freio e o acelerador
+  pausar / ativar            o freio e o acelerador (`pausar --tudo` = freio geral)
 
 USO
   python -m magicads init
@@ -43,6 +43,7 @@ USO
   python -m magicads relatorio acme --dias 14
   python -m magicads relatorio --mudas
   python -m magicads pausar acme 120xxxxxxxx
+  python -m magicads pausar acme --tudo        # freio: pausa tudo que esta ativo
   python -m magicads ativar acme 120xxxxxxxx --executar
 """
 import json
@@ -342,12 +343,112 @@ def cmd_chamada(metodo, argv):
     print(limpa(json.dumps(d, ensure_ascii=False, indent=2)))
 
 
+def contas_meta_do_cliente(cliente, nome, argv):
+    """De onde sai a lista de contas do `--tudo`.
+
+    NAO sai de `me/adaccounts`, e isso e a decisao inteira: o token quase sempre
+    enxerga conta de cliente vizinho, e pausar a campanha do vizinho as 23h e
+    pior do que o problema que voce estava tentando resolver. Ou vem da carteira
+    (onde alguem escreveu, de proposito, que aquela conta e deste cliente), ou
+    voce escreve o act_ na mao.
+    """
+    explicitas = [a for a in argv if a.startswith("act_")]
+    if explicitas:
+        return explicitas
+    try:
+        from .banco import Banco
+        banco = Banco(exigir=False)
+        if banco.modo:
+            return [cid for slug, _, canal, cid in banco.carteira()
+                    if canal == "meta" and slug in (cliente, nome)]
+    except Exception as e:
+        print("carteira indisponivel: %s" % limpa(e))
+    return []
+
+
+def cmd_freio(argv):
+    """Freio de emergencia: pausa TODA campanha ativa das contas do cliente.
+
+    Executa direto, como o `pausar` de um id so. Digitar `--tudo` JA e a
+    confirmacao; pedir um segundo flag em cima disso faria o freio virar aquela
+    coisa que voce nao consegue usar exatamente na hora em que precisa dele.
+    """
+    cliente = argv[0]
+    nome, tok = token(cliente)
+    usa(tok)
+
+    contas = contas_meta_do_cliente(cliente, nome, argv[1:])
+    if not contas:
+        sys.exit(
+            "nao sei quais contas sao do %s.\n"
+            "  cadastre:  python -m magicads conta %s meta act_...\n"
+            "  ou diga:   python -m magicads pausar %s --tudo act_...\n"
+            "NAO derivo isso de me/adaccounts de proposito: o token costuma "
+            "enxergar conta de outro cliente." % (nome, nome, nome))
+
+    print("FREIO em %s  ·  %d conta(s): %s" % (nome, len(contas), ", ".join(contas)))
+    print("-" * 72)
+
+    pausadas, falhas, vazias = [], [], []
+    for conta in contas:
+        d, e = chamada("GET", "%s/campaigns" % conta,
+                       {"fields": "id,name,status",
+                        "effective_status": json.dumps(["ACTIVE"]), "limit": "200"})
+        if e:
+            print("  %s  nao consegui listar: %s" % (conta, erro_legivel(e)[:70]))
+            falhas.append(conta)
+            continue
+        camps = (d or {}).get("data") or []
+        if not camps:
+            vazias.append(conta)
+            continue
+        for c in camps:
+            _, e2 = chamada("POST", c["id"], {"status": "PAUSED"})
+            if e2:
+                print("  FALHOU  %s  %s" % (c["id"], erro_legivel(e2)[:60]))
+                falhas.append(c["id"])
+            else:
+                print("  pausada %s  %s" % (c["id"], (c.get("name") or "")[:44]))
+                pausadas.append(c["id"])
+
+    # Conferir por GET no proprio id, um a um. O POST responder 200 nao prova
+    # que parou, e reler a LISTA prova menos ainda.
+    ainda_ativas = []
+    for ident in pausadas:
+        v, e3 = chamada("GET", ident, {"fields": "id,name,effective_status"})
+        if not e3 and (v or {}).get("effective_status") == "ACTIVE":
+            ainda_ativas.append(ident)
+
+    print("-" * 72)
+    print("pausadas: %d   falhas: %d" % (len(pausadas), len(falhas)))
+    if vazias:
+        print("")
+        print("sem campanha ativa: %s" % ", ".join(vazias))
+        print("  ATENCAO: lista vazia com HTTP 200 e tambem o que a Meta devolve sob")
+        print("  rate limit. Se voce SABE que tinha campanha rodando nessa conta,")
+        print("  rode de novo daqui a um minuto antes de acreditar.")
+    if ainda_ativas:
+        print("")
+        print("AINDA ATIVAS depois do POST (%d): %s" % (len(ainda_ativas),
+                                                        ", ".join(ainda_ativas)))
+        print("  a Meta aceitou e nao aplicou. Rode de novo.")
+    return 1 if (falhas or ainda_ativas) else 0
+
+
 def cmd_status(argv, novo):
     """pausar/ativar qualquer entidade (campanha, conjunto, anuncio) pelo id.
 
     `pausar` executa direto: freio que exige confirmacao e freio que nao se usa
     na hora do aperto. `ativar` exige --executar, porque religar queima dinheiro.
     """
+    if "--tudo" in argv:
+        if novo == "ACTIVE":
+            sys.exit("nao existe `ativar --tudo`. Religar a conta inteira de uma vez e "
+                     "como voce descobre no extrato o que devia ter revisado antes.\n"
+                     "Religue uma a uma: python -m magicads ativar <cliente> <id> --executar")
+        if not argv:
+            sys.exit("uso: python -m magicads pausar <cliente> --tudo [act_...]")
+        sys.exit(cmd_freio(argv))
     if len(argv) < 2:
         sys.exit("uso: python -m magicads %s <cliente> <id>"
                  % ("pausar" if novo == "PAUSED" else "ativar"))

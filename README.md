@@ -7,6 +7,13 @@
   O que roda tráfego de verdade não é chat: é cron, payload fixo e conferência por <code>GET</code>.
 </p>
 
+<p align="center">
+  <a href="https://github.com/MatheusEdson/MagicAds/actions/workflows/provas.yml"><img src="https://github.com/MatheusEdson/MagicAds/actions/workflows/provas.yml/badge.svg" alt="provas"></a>
+  <img src="https://img.shields.io/badge/python-3.8%2B-blue" alt="python 3.8+">
+  <img src="https://img.shields.io/badge/depend%C3%AAncias-0-brightgreen" alt="zero dependências">
+  <img src="https://img.shields.io/badge/licen%C3%A7a-MIT-black" alt="MIT">
+</p>
+
 ---
 
 ## O que é
@@ -82,8 +89,16 @@ python -m magicads relatorio --mudas      # quem parou de reportar
 
 # freio e acelerador
 python -m magicads pausar acme 120xxxxxxxx
+python -m magicads pausar acme --tudo     # FREIO GERAL: pausa tudo que está ativo
 python -m magicads ativar acme 120xxxxxxxx --executar
 ```
+
+`pausar --tudo` executa direto — digitar `--tudo` já é a confirmação, e freio que
+pede confirmação em cima disso é freio que você não consegue usar às 23h. Ele tira
+a lista de contas **da carteira**, nunca de `me/adaccounts`: o token quase sempre
+enxerga conta de cliente vizinho, e pausar a campanha do vizinho é pior que o
+problema que você estava resolvendo. Sem carteira, ele exige o `act_` na mão.
+Não existe `ativar --tudo`.
 
 `relatorio --mudas` sai com código 1 quando alguma conta **emudeceu** — dá pra pendurar no cron e só receber e-mail quando importa.
 
@@ -134,9 +149,14 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
 
 ```bash
-python -m unittest discover -s tests   # 55 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 60 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
+
+As três coisas rodam sozinhas a cada push (`.github/workflows/provas.yml`):
+testes em Python 3.8 e 3.12, Linux e Windows · o scrub · e o **ensaio de cada
+receita de exemplo**, porque exemplo quebrado é pior que exemplo ausente — quem
+copia não desconfia.
 
 ## Estado
 
@@ -146,6 +166,7 @@ python -m unittest discover -s tests   # 55 testes, stdlib, sem instalar nada
 | `diag` — os 6 portões | ✅ funciona |
 | `subir` + receitas por tipo de conta | ✅ funciona |
 | `get`, `post`, `pausar`, `ativar`, `imagem` | ✅ funciona |
+| `pausar --tudo` — freio geral | ✅ funciona |
 | ETL Meta + Google, idempotente | ✅ funciona |
 | `relatorio` — portfólio, campanha, mudas | ✅ funciona |
 | Agentes Gandalf, 4 tipos de conta + porteiro | ✅ prontos |

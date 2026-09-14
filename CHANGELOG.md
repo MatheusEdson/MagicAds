@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.1.0 — 2026-09-14
+
+### Novo
+
+- **`pausar <cliente> --tudo`** — o freio geral. Pausa toda campanha ativa das
+  contas do cliente e **executa direto**: digitar `--tudo` já é a confirmação, e
+  freio que pede confirmação em cima disso é freio que você não consegue usar
+  às 23h. A lista de contas sai da **carteira**, nunca de `me/adaccounts` — o
+  token quase sempre enxerga conta de cliente vizinho, e pausar a campanha do
+  vizinho é pior que o problema que você estava resolvendo. Sem carteira, exige
+  o `act_` na mão. Confere cada uma por `GET` no próprio id e denuncia quem a
+  Meta aceitou e não aplicou. Não existe `ativar --tudo`.
+  - Lista vazia não é declarada como "nada ativo": `data:[]` com HTTP 200 é
+    também o que a Meta devolve sob rate limit, e dizer "tudo certo" aí é mandar
+    a pessoa dormir com a conta gastando.
+- **CI** (`.github/workflows/provas.yml`): testes em Python 3.8 e 3.12, Linux e
+  Windows · o scrub · e o **ensaio de cada receita de exemplo**. O hook de
+  pre-push depende de quem clonou ter instalado; quem forka não instala, e aí a
+  promessa de "nenhum segredo no repo" valia só na máquina de um.
+- 60 testes (eram 55).
+
+### Mudou
+
+- **Nova marca: chapéu de mago**, estilo quadrinho, em ouro — casa com *Gandalf,
+  o Dourado* de um jeito que a varinha não casava. `logo.svg` e `mark.svg`
+  compartilham a mesma geometria em vez de duas cópias, porque duas cópias
+  divergem no primeiro retoque. Legível até 32px.
+
 ## 1.0.0 — 2026-09-14
 
 A v0 era biblioteca: dava pra ler a API, mas não dava pra **operar**. Faltavam
