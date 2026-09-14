@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 128" width="520" height="128" role="img" aria-label="MagicAds">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C5CFF"/>
+      <stop offset="55%" stop-color="#A855F7"/>
+      <stop offset="100%" stop-color="#F472B6"/>
+    </linearGradient>
+    <linearGradient id="wand" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- marca -->
+  <rect x="8" y="16" width="96" height="96" rx="26" fill="url(#g)"/>
+
+  <!-- varinha -->
+  <g transform="rotate(-38 56 64)">
+    <rect x="50" y="34" width="12" height="58" rx="6" fill="url(#wand)"/>
+    <rect x="50" y="76" width="12" height="16" rx="6" fill="#FFFFFF" opacity=".35"/>
+  </g>
+
+  <!-- faiscas: 4 estrelas de 4 pontas -->
+  <path d="M78 34c1.4 6.2 3.4 8.2 9.6 9.6-6.2 1.4-8.2 3.4-9.6 9.6-1.4-6.2-3.4-8.2-9.6-9.6 6.2-1.4 8.2-3.4 9.6-9.6z" fill="#FFFFFF"/>
+  <path d="M92 56c.9 4 2.2 5.3 6.2 6.2-4 .9-5.3 2.2-6.2 6.2-.9-4-2.2-5.3-6.2-6.2 4-.9 5.3-2.2 6.2-6.2z" fill="#FFFFFF" opacity=".85"/>
+  <path d="M34 84c.7 3.2 1.7 4.2 4.9 4.9-3.2.7-4.2 1.7-4.9 4.9-.7-3.2-1.7-4.2-4.9-4.9 3.2-.7 4.2-1.7 4.9-4.9z" fill="#FFFFFF" opacity=".7"/>
+
+  <!-- wordmark -->
+  <text x="126" y="80" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="48" font-weight="700" fill="#0F172A" letter-spacing="-1">
+    Magic<tspan fill="url(#g)">Ads</tspan>
+  </text>
+  <text x="128" y="102" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#64748B" letter-spacing="3.2">SEU APP, SEU TOKEN, SUA OPERACAO</text>
+</svg>

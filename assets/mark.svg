@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="MagicAds">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C5CFF"/>
+      <stop offset="55%" stop-color="#A855F7"/>
+      <stop offset="100%" stop-color="#F472B6"/>
+    </linearGradient>
+    <linearGradient id="wand" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="128" height="128" rx="32" fill="url(#g)"/>
+  <g transform="rotate(-38 62 68)">
+    <rect x="56" y="34" width="14" height="66" rx="7" fill="url(#wand)"/>
+    <rect x="56" y="82" width="14" height="18" rx="7" fill="#FFFFFF" opacity=".35"/>
+  </g>
+  <path d="M88 30c1.6 7.2 3.9 9.5 11.1 11.1-7.2 1.6-9.5 3.9-11.1 11.1-1.6-7.2-3.9-9.5-11.1-11.1 7.2-1.6 9.5-3.9 11.1-11.1z" fill="#FFFFFF"/>
+  <path d="M104 58c1 4.6 2.5 6.1 7.1 7.1-4.6 1-6.1 2.5-7.1 7.1-1-4.6-2.5-6.1-7.1-7.1 4.6-1 6.1-2.5 7.1-7.1z" fill="#FFFFFF" opacity=".85"/>
+  <path d="M34 86c.8 3.7 2 4.9 5.7 5.7-3.7.8-4.9 2-5.7 5.7-.8-3.7-2-4.9-5.7-5.7 3.7-.8 4.9-2 5.7-5.7z" fill="#FFFFFF" opacity=".7"/>
+</svg>

@@ -1,0 +1,29 @@
+# segredo: NADA de token aqui dentro. O cofre mora em ~/.magicads/tokens
+.env
+.env.*
+!.env.example
+*.env
+!exemplos/*.example.env
+tokens/
+*.pem
+*.key
+
+# dado de cliente
+carteira.py
+clientes.py
+contas.yaml
+out/
+saida/
+*.csv
+*.ndjson
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# so
+.DS_Store
+Thumbs.db
