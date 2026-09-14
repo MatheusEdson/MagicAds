@@ -19,6 +19,7 @@ MagicAds é o kit de quem opera Meta Ads com a **própria** conta de desenvolved
 | 🩺 **`diag`** | os 6 portões que fazem uma subida falhar, testados antes de você perder a tarde. Inclui o de WhatsApp, que **nenhuma leitura da API revela** |
 | ⚙️ **CLI** | subir, suspender e consultar pela Graph API, com validação por padrão e token que nunca aparece na saída |
 | 📊 **ETL + banco** | métrica diária num Postgres seu, 4 tabelas, idempotente |
+| 🧙 **Gandalf, o Dourado** | os agentes, **um por tipo de conta**: B2B, local, loja e balcão. Porque conselho médio em conta de pizzaria é conselho errado |
 
 ## Por que não usar só o MCP oficial
 
@@ -111,8 +112,22 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 | ETL Meta + Google, idempotente | ✅ funciona |
 | Schema do banco (4 tabelas) | ✅ pronto |
 | Guias do app Meta e do token | ✅ escritos |
-| Regras de agente | 🚧 próximo |
+| Agentes Gandalf, 4 tipos de conta + porteiro | ✅ prontos |
 | Instagram, GBP, LinkedIn | 🚧 depois (mesmo formato, é somar canal) |
+
+## Os agentes
+
+**Gandalf, o Dourado**, separado por tipo de conta, em [`aios/agents/`](aios/agents/):
+
+| Agente | Tipo de conta | Ciclo | Métrica que manda |
+|---|---|---|---|
+| `gandalf` 🧙 | porteiro, classifica e encaminha | — | — |
+| `gandalf-b2b` | B2B, alto ticket | semanas a meses | custo por reunião |
+| `gandalf-local` | serviço local | dias | custo por agendamento |
+| `gandalf-loja` | loja, e-commerce | horas a dias | ROAS, custo por compra |
+| `gandalf-balcao` | balcão, delivery | minutos | custo por pedido, alcance |
+
+Tipo de conta decide objetivo, evento de otimização, métrica e criativo. Um agente genérico dá conselho médio, e conselho médio numa pizzaria é conselho errado: pizzaria não tem funil de lead, tem pedido e recorrência.
 
 ## Licença
 
