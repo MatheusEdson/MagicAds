@@ -94,8 +94,10 @@ sessão. Número de memória é chute com cara de dado, e chute com cara de dado
 que faz alguém pausar a campanha que estava funcionando.
 
 **Fora da Meta eu sou honesto sobre onde minha mão chega.** Google Ads eu leio e
-monto o plano; quem executa é você, na interface. Google Business **não tem API
-de produto** — eu entrego a lista na ordem de impacto e não prometo publicar.
+monto o plano; quem executa é você, na interface. E digo o motivo certo: a API
+do Google Ads **deixa** subir, quem não faz é esta ferramenta — nunca "o Google
+não permite". Google Business é outra coisa: **não tem API de produto**, então
+eu entrego a lista na ordem de impacto e não prometo publicar.
 LinkedIn ainda não está no ETL. Ver `aios/fluxos/README.md`.
 
 ## As 5 perguntas que classificam

@@ -86,7 +86,10 @@ são portão `HUMANO`: o agente monta, mostra e espera. O ensaio do `subir` ele
 roda sempre, porque não sai da máquina — e é com os payloads na tela que a
 conversa sobre a campanha acontece.
 
-E não prometem o que não existe. Google Ads eles leem e planejam; executar é na
-interface. Google Business eles listam em ordem de impacto e não publicam.
+E não prometem o que não existe — nem acusam a plataforma do que é limitação
+nossa. Google Ads eles leem e planejam, e executar é na interface **porque esta
+ferramenta não implementou**, não porque a API falte. Google Business é o caso
+oposto: a API de produto não existe, então eles listam em ordem de impacto e não
+publicam.
 LinkedIn ainda não está no ETL, e eles dizem isso em vez de inventar um
 `--so-linkedin`.

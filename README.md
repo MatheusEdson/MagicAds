@@ -135,9 +135,20 @@ Antes de promessa, a verdade. Esta tabela existe para ninguém — pessoa ou age
 |---|---|---|---|---|
 | **Meta** | ✅ | ✅ | ✅ | `magicads` ponta a ponta |
 | **Instagram** | ✅ | ✅ | ✅ | **é posicionamento, não canal separado** |
-| **Google Ads** | ✅ no ETL | ❌ | ❌ | subida é na interface, hoje |
-| **Google Business** | ⚠️ parcial | ❌ | ❌ | **não existe API de produto.** A ficha é na mão |
+| **Google Ads** | ✅ no ETL | ⚠️ dá, **não implementado aqui** | ⚠️ idem | API existe; hoje a subida é na interface |
+| **Google Business** | ⚠️ parcial | ❌ **não existe API** | ❌ | a ficha e o produto são na mão |
 | **LinkedIn** | ❌ | ❌ | ❌ | API separada, ainda não integrada |
+
+Os dois ❌ do Google **não são a mesma coisa**, e confundi-los é o erro que esta
+tabela existe pra impedir. No **Business** a API de produto não existe: ninguém
+sobe, nem você nem uma ferramenta paga. No **Ads** a API cria campanha, grupo,
+anúncio e palavra-chave sem problema — o que falta é código deste repositório.
+
+Se você for implementar, o portão não é técnico, é **burocrático e leva dias**: o
+`developer token` sai no API Center de uma conta de administrador (MCC) e nasce
+em **acesso de teste**, que só fala com contas de teste. Pra tocar conta de
+produção você **solicita** a subida de nível (acesso básico) num formulário que
+o Google revisa. Quem já lê produção no ETL daqui já passou por esse portão.
 
 Instagram não é canal a mais: é uma linha no targeting (`posicionamentos`) mais o `instagram_id` — sem ele o anúncio roda no IG com o nome e a foto da **Página do Facebook**. Tratar como canal separado leva a campanha duplicada e verba dividida entre duas coisas que a Meta já otimizava junto.
 

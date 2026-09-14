@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.6.3 — 2026-09-14
+
+**A tabela de capacidades dava o mesmo `❌` pro Google Ads e pro Google Business,
+e são coisas opostas.** No Business a API de produto **não existe**: ninguém sobe,
+nem você nem ferramenta paga. No Ads a API cria campanha, grupo, anúncio e
+palavra-chave sem problema — o que falta é código deste repositório.
+
+Lado a lado, com o mesmo símbolo e com “subida é na interface, hoje” na coluna
+do lado, isso lia como limitação **da plataforma**. Num arquivo que abre com
+“antes de promessa, a verdade”, era a linha errada pra estar errada.
+
+Agora Google Ads é `⚠️ dá, não implementado aqui` e Google Business segue
+`❌ não existe API`, com o parágrafo explicando a diferença. Os cinco agentes
+passaram a dizer o motivo certo: **nunca “o Google não permite”**.
+
+### O portão que faltava documentar
+
+Quem for implementar esbarra numa burocracia que leva **dias**, não minutos:
+
+1. O `developer token` sai no **API Center de uma conta de administrador (MCC)**.
+   Conta comum não emite.
+2. Ele nasce em **acesso de teste**, que só fala com **contas de teste**. É a
+   pegadinha: o token parece válido, autentica, e só quebra quando você aponta
+   pra conta de verdade.
+3. Pra tocar produção você **solicita** a subida de nível num formulário que o
+   Google revisa.
+
+Quem já lê produção no ETL daqui **já passou** por esse portão — acesso de teste
+não leria conta de cliente. Pra essa pessoa falta só o código. Pra quem começa
+do zero, o pedido é o primeiro passo e não dá pra pular.
+
+A ressalva de sempre continua de pé: o que trava a implementação aqui não é o
+acesso, é o modelo de receita. Search sem lista de negativas é uma máquina de
+comprar clique errado.
 ## 1.6.2 — 2026-09-14
 
 **O passo 0 do README fazia as duas guardas reprovarem no minuto um.** Num clone

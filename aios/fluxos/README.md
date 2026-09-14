@@ -19,9 +19,19 @@ mentindo, e mentira de agente vira promessa para o cliente.
 |---|---|---|---|---|
 | **Meta** (Facebook) | ✅ API | ✅ API | ✅ API | `magicads` ponta a ponta |
 | **Instagram** | ✅ junto da Meta | ✅ junto da Meta | ✅ | **é posicionamento, não canal** |
-| **Google Ads** | ✅ API (no ETL) | ❌ não implementado | ❌ | subida é na interface, hoje |
+| **Google Ads** | ✅ API (no ETL) | ⚠️ a API **dá**, aqui não tem | ⚠️ idem | subida é na interface, hoje |
 | **Google Business** (GBP) | ⚠️ parcial | ❌ **não existe API** | ❌ | post e produto são na mão |
 | **LinkedIn** | ❌ fora do ETL | ❌ | ❌ | API separada, ainda não integrada |
+
+⚠️ **e** ❌ dizem coisas diferentes, e o agente precisa saber qual é qual.
+❌ é “não existe”: no GBP ninguém sobe produto por API, nem você nem ferramenta
+paga, então prometer é mentir. ⚠️ é “dá, mas não por aqui”: o Google Ads cria
+campanha, grupo, anúncio e palavra-chave pela API sem problema — o que falta é
+código deste repositório.
+
+Pro agente isso muda a frase. Com ❌: “isso não tem API, tem que ser na mão”.
+Com ⚠️: “dá pra automatizar, mas hoje eu não faço; te monto o plano e você
+executa na interface”. **Nunca** “o Google não deixa”.
 
 ### Instagram não é um canal a mais
 

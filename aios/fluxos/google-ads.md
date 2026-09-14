@@ -1,6 +1,8 @@
 # Fluxo — Google Ads
 
 > **O que dá hoje: ler.** Subir pela API é possível e **não está implementado**.
+> Não confunda com o Google Business, onde a API **não existe**. Aqui ela existe;
+> falta código, e falta você ter **solicitado** o nível de acesso do token (abaixo).
 
 Isso é escolha, não bug. A subida no Google tem outra anatomia — palavra-chave,
 tipo de correspondência, negativa, extensão, grupo de anúncio — e portar o modelo
@@ -65,3 +67,29 @@ negativas — e você executa lá.
 
 Isso não é fraqueza do fluxo: é o agente sendo honesto sobre onde a mão dele
 chega. O plano escrito com a série na frente já é a maior parte do trabalho.
+
+**Mas não diga que o Google não deixa.** Deixa. `CampaignService`,
+`AdGroupService`, `AdGroupAdService` e `AdGroupCriterionService` criam campanha,
+grupo, anúncio e palavra-chave por API. Quem não faz é este repositório.
+
+### O portão pra implementar não é técnico
+
+É burocrático, e leva **dias**, não minutos:
+
+1. O `developer token` sai no **API Center de uma conta de administrador (MCC)**.
+   Conta comum não emite.
+2. Ele nasce em **acesso de teste**, que só fala com **contas de teste**. É a
+   pegadinha: o token parece válido, autentica, e devolve erro quando você
+   aponta pra conta de verdade.
+3. Pra tocar conta de produção você **solicita** a subida de nível (acesso
+   básico) num formulário, e o Google revisa. Depois existe ainda o nível
+   padrão, que solta o limite de operações por dia.
+
+Quem já lê produção no ETL daqui **já passou** por esse portão: acesso de teste
+não leria conta de cliente. Então pra essa pessoa falta só o código. Pra quem
+começa do zero, o pedido é o primeiro passo e não dá pra pular.
+
+E a ressalva do topo continua de pé: o que trava a implementação **aqui** não é
+o acesso, é o modelo de receita. Search sem lista de negativas é uma máquina de
+comprar clique errado, e uma receita que gera isso em dois comandos é pior que
+não ter receita nenhuma.
