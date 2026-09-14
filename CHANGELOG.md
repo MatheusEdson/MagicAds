@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.2.0 — 2026-09-14
+
+O elo que faltava: os agentes tinham **doutrina** e nenhum **contrato com a
+ferramenta**. Sabiam o que aconselhar e não sabiam o que rodar — e por isso
+inventariam flag e prometeriam automação onde não existe API.
+
+### Novo
+
+- **`magicads contrato`** — a ferramenta se descreve. Lista real dos comandos
+  daquela versão, com **o portão de cada um**: `LIVRE` (roda à vontade),
+  `ESCREVE` (roda e conta depois), `FREIO` (em emergência roda sozinho e avisa
+  depois), `HUMANO` (nunca roda: monta, mostra, espera). `--json` para
+  ferramenta. Uma lista escrita à mão divergiria do código no primeiro commit,
+  e aí o agente passaria a mentir com mais confiança.
+- **`aios/fluxos/`** — o ofício: `meta-subir`, `meta-operar`, `meta-emergencia`,
+  e um arquivo por plataforma. O `README.md` de lá é **a matriz honesta do que
+  cada plataforma deixa fazer**, que é o que impede o agente de prometer o
+  impossível.
+- **`magicads video`** — sobe vídeo para a biblioteca da conta (multipart, sem
+  dependência nova). O `subir` aceita `video_id` + `capa_hash`. Vídeo sem capa
+  faz a Meta sortear um frame, e frame sorteado de vídeo vertical costuma ser a
+  pessoa de olho fechado — por isso a receita exige.
+- **Posicionamento e Instagram no `subir`**: `posicionamentos`,
+  `posicoes_instagram`, `posicoes_facebook` e `instagram_id`. Sem declarar
+  posicionamento, a Meta vai buscar volume barato em Audience Network; sem
+  `instagram_id`, o anúncio roda no IG com a identidade da Página do Facebook.
+- **`receitas/loja-video-reels.json`** — a quinta receita, mostrando as três
+  peças que só aparecem em vídeo.
+- **`tests/test_agentes.py`** — falha se um agente ou fluxo citar comando que
+  não existe, apontar para arquivo apagado, ou pedir receita que sumiu. E
+  valida o bloco YAML de cada agente (job próprio na CI, com PyYAML instalado
+  só lá — o MagicAds continua sem dependência).
+- 88 testes (eram 60).
+
+### Corrigido
+
+- **O bloco YAML de dois agentes era inválido** e ninguém sabia: `description:
+  Monta a semana: picos...` tem dois `:` e o parser para no primeiro. YAML
+  inválido é ignorado em silêncio por quem lê — o agente subia sem nenhuma das
+  regras escritas ali. Agora tem teste.
+
+### Mudou
+
+- Instagram sai de "🚧 depois" para **feito**: ele nunca foi um canal a mais, é
+  posicionamento da mesma campanha. Tratar como canal separado levaria a
+  campanha duplicada e verba dividida entre duas coisas que a Meta já otimizava
+  junto.
+- GBP sai de "🚧 depois" para **⛔ não tem API de produto**. O fluxo está
+  escrito; a automação não existe, e prometer que existe seria o pior erro do
+  pacote.
+
 ## 1.1.0 — 2026-09-14
 
 ### Novo

@@ -88,6 +88,59 @@ def http(url, data=None, headers=None, method=None, tentativas=3, form=None):
             raise RuntimeError(limpa(str(e)[:200]))
 
 
+def http_arquivo(url, campos, campo_arquivo, caminho, tentativas=2):
+    """POST multipart com um arquivo em disco.
+
+    `/adimages` aceita base64 num campo comum, mas `/advideos` quer multipart de
+    verdade. Em vez de puxar `requests` so por isso -- o projeto inteiro nao tem
+    dependencia -- o corpo e montado aqui, em umas 15 linhas.
+
+    Le o arquivo em memoria de uma vez. Criativo de anuncio nao passa de algumas
+    dezenas de MB; se um dia passar, o caminho certo e o upload em pedacos da
+    Meta, e nao aumentar isto.
+    """
+    import os as _os
+    import uuid as _uuid
+
+    limite = "----magicads%s" % _uuid.uuid4().hex
+    with open(caminho, "rb") as fh:
+        conteudo = fh.read()
+
+    partes = []
+    for chave, valor in campos.items():
+        partes.append(("--%s\r\n" % limite).encode("utf-8"))
+        partes.append(('Content-Disposition: form-data; name="%s"\r\n\r\n'
+                       % chave).encode("utf-8"))
+        partes.append(("%s\r\n" % valor).encode("utf-8"))
+    partes.append(("--%s\r\n" % limite).encode("utf-8"))
+    partes.append(('Content-Disposition: form-data; name="%s"; filename="%s"\r\n'
+                   % (campo_arquivo, _os.path.basename(caminho))).encode("utf-8"))
+    partes.append(b"Content-Type: application/octet-stream\r\n\r\n")
+    partes.append(conteudo)
+    partes.append(("\r\n--%s--\r\n" % limite).encode("utf-8"))
+    corpo = b"".join(partes)
+
+    cab = {"Content-Type": "multipart/form-data; boundary=%s" % limite,
+           "Content-Length": str(len(corpo))}
+    for n in range(tentativas):
+        try:
+            req = urllib.request.Request(url, data=corpo, headers=cab, method="POST")
+            with urllib.request.urlopen(req, timeout=600) as r:
+                bruto = r.read()
+                return json.loads(bruto) if bruto else {}
+        except urllib.error.HTTPError as e:
+            texto = e.read().decode("utf-8", "replace")[:400]
+            if e.code in (429, 500, 503) and n < tentativas - 1:
+                time.sleep(5)
+                continue
+            raise RuntimeError(limpa("HTTP %s: %s" % (e.code, texto)))
+        except Exception as e:
+            if n < tentativas - 1:
+                time.sleep(5)
+                continue
+            raise RuntimeError(limpa(str(e)[:200]))
+
+
 def erro_da_meta(texto):
     """Extrai (code, subcode, mensagem) de um erro da Graph pra decidir em cima."""
     try:

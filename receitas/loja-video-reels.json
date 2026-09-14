@@ -1,0 +1,43 @@
+{
+  "_leia": "Loja, criativo em VIDEO, entregue em Reels e Stories. Mostra as tres pecas que so aparecem aqui: video_id, capa_hash e instagram_id. Agente: gandalf-loja.",
+  "_atencao": "Instagram NAO e canal separado: e posicionamento da mesma campanha. Sem `instagram_id` o anuncio roda no IG com o nome e a foto da PAGINA do Facebook -- funciona, entrega, e parece de outra marca pra quem ve.",
+
+  "tipo": "loja",
+  "cliente": "acme",
+  "conta": "act_000000000000002",
+  "pagina": "000000000000001",
+  "instagram_id": "000000000000005",
+  "pixel": "000000000000003",
+  "evento": "PURCHASE",
+
+  "campanha": {
+    "nome": "[C02] Loja · vendas · video vertical",
+    "categorias_especiais": []
+  },
+
+  "conjunto": {
+    "nome": "[A01] reels + stories · BR · 18-45",
+    "verba_diaria": 6000,
+    "idade": [18, 45],
+    "geo": { "geo_locations": { "countries": ["BR"] } },
+    "posicionamentos": ["facebook", "instagram"],
+    "posicoes_instagram": ["reels", "story"],
+    "posicoes_facebook": ["facebook_reels"],
+    "_posicionamentos": "declarar e o que impede a Meta de ir buscar volume barato em Audience Network, que enche o relatorio de impressao e nao enche mais nada.",
+    "advantage_audience": 1
+  },
+
+  "anuncios": [
+    {
+      "nome": "[AD01] gancho 3s · produto em uso · oferta",
+      "titulo": "Chegou o que estava esgotado",
+      "texto": "Os tres primeiros segundos decidem se o resto existe. Mostre o produto em uso antes de falar o nome da marca.",
+      "descricao": "Frete gratis acima de R$199",
+      "cta": "SHOP_NOW",
+      "link": "https://exemplo.com.br/novidades?utm_source=meta&utm_medium=paid&utm_campaign=c02&utm_content=ad01",
+      "video_id": "000000000000006",
+      "capa_hash": "00000000000000000000000000000000",
+      "_capa": "sem capa a Meta sorteia um frame, e frame sorteado de video vertical costuma ser a pessoa de olho fechado. Suba um frame com `magicads imagem` e ponha o hash aqui."
+    }
+  ]
+}

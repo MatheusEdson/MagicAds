@@ -30,7 +30,8 @@ import json
 import os
 import sys
 
-from .comum import GRAPH, diz, erro_da_meta, guarda_segredo, http, limpa
+from .comum import (GRAPH, diz, erro_da_meta, guarda_segredo, http, http_arquivo,
+                    limpa)
 
 # tipo de conta -> o que a Meta espera. Vem dos agentes Gandalf (aios/agents/).
 PADROES = {
@@ -119,9 +120,18 @@ def valida(r):
             if not a.get(campo):
                 raise Recusa("anuncio %d: falta `%s`" % (i, campo))
         if not a.get("imagem_hash") and not a.get("video_id"):
-            raise Recusa("anuncio %d: precisa de `imagem_hash` ou `video_id`. "
-                         "Suba a imagem com: python -m magicads imagem <cliente> <conta> <arquivo>"
-                         % i)
+            raise Recusa("anuncio %d: precisa de `imagem_hash` ou `video_id`.\n"
+                         "  imagem: python -m magicads imagem <cliente> <conta> <arquivo>\n"
+                         "  video:  python -m magicads video  <cliente> <conta> <arquivo>" % i)
+        if a.get("video_id") and not a.get("capa_hash"):
+            raise Recusa("anuncio %d: video exige `capa_hash`. Escolha um frame, suba com "
+                         "`magicads imagem` e ponha o hash ali.\n"
+                         "  Sem capa a Meta pega um frame sozinha, e frame sorteado de video "
+                         "vertical costuma ser a pessoa de olho fechado." % i)
+        if a.get("video_id") and a.get("imagem_hash"):
+            raise Recusa("anuncio %d: escolha UM criativo. Com `video_id` e `imagem_hash` "
+                         "juntos, a Meta usa o video e ignora a imagem em silencio -- e voce "
+                         "passa a tarde achando que testou as duas." % i)
 
     avisos = []
     if conj.get("advantage_audience") == 1 and tipo == "b2b":
@@ -131,6 +141,15 @@ def valida(r):
     if camp.get("verba_diaria"):
         avisos.append("verba na CAMPANHA (CBO) cobra o minimo por CONJUNTO ATIVO. "
                       "Com varios conjuntos ligados e verba pequena, o piso estoura o planejado.")
+    posic = conj.get("posicionamentos")
+    if posic and "instagram" in posic and not r.get("instagram_id"):
+        avisos.append("posicionamento no Instagram sem `instagram_id`: o anuncio roda no IG "
+                      "com o nome e a foto da PAGINA do Facebook. Funciona, e parece de outra "
+                      "marca pra quem ve.")
+    if not posic:
+        avisos.append("sem `conjunto.posicionamentos`, a Meta escolhe onde entregar -- e "
+                      "costuma achar volume barato em Audience Network. Se voce so quer feed e "
+                      "stories, diga.")
     return objetivo, otimizacao, destino, avisos
 
 
@@ -165,6 +184,17 @@ def monta(r, objetivo, otimizacao, destino):
         alvo["excluded_custom_audiences"] = [{"id": i} for i in conj["publicos_excluir"]]
     alvo["targeting_automation"] = {"advantage_audience": int(conj.get("advantage_audience", 0))}
 
+    # Instagram nao e canal separado: e posicionamento da mesma API. Declarar as
+    # plataformas evita que a Meta va buscar volume barato em Audience Network,
+    # que enche o relatorio de impressao e nao enche nada mais.
+    posic = conj.get("posicionamentos")
+    if posic:
+        alvo["publisher_platforms"] = list(posic)
+        if conj.get("posicoes_facebook"):
+            alvo["facebook_positions"] = conj["posicoes_facebook"]
+        if conj.get("posicoes_instagram"):
+            alvo["instagram_positions"] = conj["posicoes_instagram"]
+
     p_conjunto = {
         "name": conj.get("nome") or "[A01] conjunto 1",
         "status": "PAUSED",
@@ -192,34 +222,50 @@ def monta(r, objetivo, otimizacao, destino):
 
     criativos, anuncios = [], []
     for a in r["anuncios"]:
-        dado_link = {
-            "message": a["texto"],
-            "name": a.get("titulo") or "",
-            "description": a.get("descricao") or "",
-        }
-        if a.get("imagem_hash"):
-            dado_link["image_hash"] = a["imagem_hash"]
+        # O destino decide o link e o botao, e isso vale igual pra imagem e video.
         if destino == "formulario":
-            dado_link["link"] = "http://fb.me/"     # exigido, ignorado no formulario
-            dado_link["call_to_action"] = {
-                "type": a.get("cta") or "SIGN_UP",
-                "value": {"lead_gen_form_id": str(a["formulario_id"])},
-            }
+            link = "http://fb.me/"      # exigido pela API, ignorado no formulario
+            botao = {"type": a.get("cta") or "SIGN_UP",
+                     "value": {"lead_gen_form_id": str(a["formulario_id"])}}
         elif destino == "whatsapp":
-            dado_link["link"] = a.get("link") or "https://api.whatsapp.com/send"
-            dado_link["call_to_action"] = {"type": a.get("cta") or "WHATSAPP_MESSAGE"}
+            link = a.get("link") or "https://api.whatsapp.com/send"
+            botao = {"type": a.get("cta") or "WHATSAPP_MESSAGE"}
         else:
-            dado_link["link"] = a["link"]
-            dado_link["call_to_action"] = {"type": a.get("cta") or "LEARN_MORE",
-                                           "value": {"link": a["link"]}}
+            link = a["link"]
+            botao = {"type": a.get("cta") or "LEARN_MORE", "value": {"link": a["link"]}}
 
-        criativos.append({
-            "name": "%s (criativo)" % a["nome"],
-            "object_story_spec": json.dumps({
-                "page_id": str(r.get("pagina") or ""),
-                "link_data": dado_link,
-            }),
-        })
+        if a.get("video_id"):
+            # video_data e link_data tem nomes DIFERENTES pros mesmos campos.
+            # `name` vira `title`, `description` vira `link_description`. Copiar o
+            # bloco de imagem e trocar so a midia gera anuncio sem titulo.
+            midia = {
+                "video_id": str(a["video_id"]),
+                "image_hash": a["capa_hash"],
+                "message": a["texto"],
+                "title": a.get("titulo") or "",
+                "link_description": a.get("descricao") or "",
+                "call_to_action": botao,
+            }
+            historia = {"video_data": midia}
+        else:
+            midia = {
+                "message": a["texto"],
+                "name": a.get("titulo") or "",
+                "description": a.get("descricao") or "",
+                "image_hash": a["imagem_hash"],
+                "link": link,
+                "call_to_action": botao,
+            }
+            historia = {"link_data": midia}
+
+        historia["page_id"] = str(r.get("pagina") or "")
+        criativo = {"name": "%s (criativo)" % a["nome"],
+                    "object_story_spec": json.dumps(historia)}
+        if r.get("instagram_id"):
+            # Sem isto o anuncio roda no Instagram com a identidade da Pagina do
+            # Facebook: nome e foto de outra marca, pra quem ve.
+            criativo["instagram_actor_id"] = str(r["instagram_id"])
+        criativos.append(criativo)
         anuncios.append({"name": a["nome"], "status": "PAUSED"})
 
     return p_campanha, p_conjunto, criativos, anuncios
@@ -342,25 +388,56 @@ def resumo(criados, token):
 # ---------------------------------------------------------------------------
 # imagem
 # ---------------------------------------------------------------------------
-def sobe_imagem(argv):
-    """POST /adimages com o arquivo em base64. Devolve o hash pra receita."""
+def sobe_midia(argv, tipo):
+    """Sobe imagem ou video pra biblioteca da conta e devolve o identificador.
+
+    Sao dois endpoints e duas formas de envio: `/adimages` aceita base64 num
+    campo comum, `/advideos` quer multipart. O id do video que sai DAQUI e o que
+    serve pra montar publico de visualizacao depois -- o arquivo no seu disco
+    nao existe pra Meta.
+    """
     from .cli import token as token_do_cofre
     if len(argv) < 3:
-        sys.exit("uso: python -m magicads imagem <cliente> <act_...> <arquivo>")
+        sys.exit("uso: python -m magicads %s <cliente> <act_...> <arquivo>" % tipo)
     cliente, conta, arquivo = argv[0], argv[1], argv[2]
     if not os.path.exists(arquivo):
         sys.exit("arquivo nao existe: %s" % arquivo)
     _, tok = token_do_cofre(cliente)
     guarda_segredo(tok)
+
+    if tipo == "video":
+        diz("subindo %s... (video demora; a Meta ainda processa depois do 200)" % arquivo)
+        resp = http_arquivo("%s/%s/advideos" % (GRAPH, conta),
+                            {"access_token": tok}, "source", arquivo)
+        ident = resp.get("id")
+        if not ident:
+            diz(json.dumps(resp, ensure_ascii=False))
+            return 1
+        diz("video_id: %s" % ident)
+        diz("")
+        diz("Ponha na receita junto de `capa_hash` (um frame subido com `imagem`).")
+        diz("O video pode levar alguns minutos pra ficar pronto. Se o anuncio falhar")
+        diz("dizendo que o video nao esta disponivel, espere e repita -- nao suba de novo.")
+        return 0
+
     with open(arquivo, "rb") as fh:
         bruto = base64.b64encode(fh.read()).decode("ascii")
     resp = chama("%s/adimages" % conta, {"bytes": bruto}, tok)
     imagens = resp.get("images") or {}
     for nome, dado in imagens.items():
-        diz("hash: %s   (%s)" % (dado.get("hash"), nome))
+        diz("imagem_hash: %s   (%s)" % (dado.get("hash"), nome))
     if not imagens:
         diz(json.dumps(resp, ensure_ascii=False))
+        return 1
     return 0
+
+
+def sobe_imagem(argv):
+    return sobe_midia(argv, "imagem")
+
+
+def sobe_video(argv):
+    return sobe_midia(argv, "video")
 
 
 # ---------------------------------------------------------------------------

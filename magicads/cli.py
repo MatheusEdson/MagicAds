@@ -19,6 +19,7 @@ REGRAS QUE O CODIGO APLICA SOZINHO
 4. Cofre em ~/.magicads/tokens, um arquivo por cliente, chmod 600.
 
 O CICLO COMPLETO
+  contrato                   o que a ferramenta faz, e o que um agente pode rodar
   init                       prepara cofre e banco, e diz o que falta
   cliente / conta            a carteira (mora no banco, nao em arquivo)
   diag <cliente>             os 6 portoes, antes de perder a tarde
@@ -36,6 +37,8 @@ USO
   python -m magicads get  acme me/adaccounts fields=name,account_status
   python -m magicads post acme act_123/campaigns name=[C01] objective=OUTCOME_LEADS
   python -m magicads imagem acme act_123 criativo.jpg
+  python -m magicads video  acme act_123 criativo.mp4
+  python -m magicads contrato                  # o que existe, e o que roda sozinho
   python -m magicads subir receitas/local-whatsapp.json
   python -m magicads subir receitas/local-whatsapp.json --executar
   python -m magicads etl --dias 7
@@ -631,6 +634,12 @@ def main():
     elif c == "imagem":
         from . import subir
         sys.exit(subir.sobe_imagem(resto))
+    elif c == "video":
+        from . import subir
+        sys.exit(subir.sobe_video(resto))
+    elif c == "contrato":
+        from . import contrato
+        sys.exit(contrato.main(resto))
     elif c == "etl":
         from . import etl
         sys.exit(etl.main(resto))

@@ -27,6 +27,7 @@ MagicAds é o kit de quem opera Meta Ads com a **própria** conta de desenvolved
 | 🚀 **`subir`** | campanha + conjunto + criativo + anúncio a partir de um JSON. Ensaio por padrão, tudo nasce `PAUSED` |
 | 📊 **ETL + `relatorio`** | métrica diária num Postgres seu, 4 tabelas, idempotente — e a leitura em formato de decisão, não de dashboard |
 | 🧙 **Gandalf, o Dourado** | os agentes, **um por tipo de conta**: B2B, local, loja e balcão. Porque conselho médio em conta de pizzaria é conselho errado |
+| 📜 **`contrato` + fluxos** | a ferramenta se descreve, e o agente sabe o que pode rodar sozinho. Sem isso ele inventa flag |
 
 ## Por que não usar só o MCP oficial
 
@@ -74,7 +75,8 @@ Sem dependência: só Python 3.8+ da biblioteca padrão. Não tem `pip install`,
 
 ```bash
 # subir: ENSAIO por padrão — imprime os 4 payloads e não chama a Meta
-python -m magicads imagem acme act_000000000000000 criativo.jpg   # devolve o hash
+python -m magicads imagem acme act_000000000000000 criativo.jpg   # devolve imagem_hash
+python -m magicads video  acme act_000000000000000 criativo.mp4   # devolve video_id
 python -m magicads subir receitas/local-whatsapp.json
 python -m magicads subir receitas/local-whatsapp.json --executar   # cria, tudo PAUSED
 
@@ -112,8 +114,45 @@ Subir na Graph são quatro chamadas encadeadas, cada uma com campo obrigatório 
 | [`local-whatsapp.json`](receitas/local-whatsapp.json) | serviço local | conversa no WhatsApp | o número **não vai no criativo**: mora no `promoted_object` |
 | [`loja-conversao.json`](receitas/loja-conversao.json) | loja, e-commerce | site + pixel | aquisição que não exclui quem já comprou chama isso de ROAS |
 | [`balcao-trafego.json`](receitas/balcao-trafego.json) | balcão, delivery | site | otimizar por evento que quase não dispara trava no aprendizado pra sempre |
+| [`loja-video-reels.json`](receitas/loja-video-reels.json) | loja, criativo em vídeo | Reels e Stories | vídeo sem `capa_hash` deixa a Meta sortear o frame, e o sorteado costuma ser a pessoa de olho fechado |
 
 Cada uma valida antes de sair da sua máquina: verba em centavos abaixo do mínimo, falta de geografia, `promoted_object` ausente e criativo sem imagem **param aqui**, de graça.
+
+## O que cada plataforma deixa fazer
+
+Antes de promessa, a verdade. Esta tabela existe para ninguém — pessoa ou agente — prometer o que não tem API:
+
+| Plataforma | Ler | Subir | Pausar | Como |
+|---|---|---|---|---|
+| **Meta** | ✅ | ✅ | ✅ | `magicads` ponta a ponta |
+| **Instagram** | ✅ | ✅ | ✅ | **é posicionamento, não canal separado** |
+| **Google Ads** | ✅ no ETL | ❌ | ❌ | subida é na interface, hoje |
+| **Google Business** | ⚠️ parcial | ❌ | ❌ | **não existe API de produto.** A ficha é na mão |
+| **LinkedIn** | ❌ | ❌ | ❌ | API separada, ainda não integrada |
+
+Instagram não é canal a mais: é uma linha no targeting (`posicionamentos`) mais o `instagram_id` — sem ele o anúncio roda no IG com o nome e a foto da **Página do Facebook**. Tratar como canal separado leva a campanha duplicada e verba dividida entre duas coisas que a Meta já otimizava junto.
+
+Google Business não tem endpoint de produto, e termo novo na ficha demora da ordem de **dois meses** para aparecer. Ficha é trabalho de mês, e medir mudança dela em sete dias não mede nada. Detalhe em [`aios/fluxos/`](aios/fluxos/).
+
+## Os agentes sabem o que rodar
+
+Um agente com doutrina e sem contrato inventa flag. Por isso a ferramenta **se descreve**:
+
+```bash
+python -m magicads contrato          # o que existe nesta versão, e o portão de cada comando
+python -m magicads contrato --json   # para ferramenta
+```
+
+Quatro portões, e é o que decide se o agente age ou propõe:
+
+| Portão | O agente | Comandos |
+|---|---|---|
+| `LIVRE` | roda à vontade | `contrato`, `init`, `clientes`, `diag`, `get`, `etl`, `relatorio` |
+| `ESCREVE` | roda e conta depois | `imagem`, `video` |
+| `FREIO` | em emergência roda sozinho e avisa **depois** | `pausar` |
+| `HUMANO` | **nunca** roda: monta, mostra, espera | `subir --executar`, `ativar`, `post --executar` |
+
+O ofício — o que fazer, em que ordem — mora em [`aios/fluxos/`](aios/fluxos/): subir, operar, emergência, e um arquivo por plataforma. E `tests/test_agentes.py` falha se um agente citar comando que não existe ou apontar para um fluxo apagado, então isso não depende de ninguém lembrar.
 
 ## A ordem importa
 
@@ -149,7 +188,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
 
 ```bash
-python -m unittest discover -s tests   # 60 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 88 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 
@@ -167,11 +206,16 @@ copia não desconfia.
 | `subir` + receitas por tipo de conta | ✅ funciona |
 | `get`, `post`, `pausar`, `ativar`, `imagem` | ✅ funciona |
 | `pausar --tudo` — freio geral | ✅ funciona |
+| `contrato` + fluxos por plataforma | ✅ pronto |
+| Vídeo e posicionamento no `subir` | ✅ funciona |
 | ETL Meta + Google, idempotente | ✅ funciona |
 | `relatorio` — portfólio, campanha, mudas | ✅ funciona |
 | Agentes Gandalf, 4 tipos de conta + porteiro | ✅ prontos |
-| Instagram, GBP, LinkedIn | 🚧 depois (mesmo formato, é somar canal) |
-| Vídeo no `subir` (hoje só imagem) | 🚧 depois |
+| Instagram | ✅ **não era canal, era posicionamento** — já sobe |
+| Google Ads: subir pela API | 🚧 depois (hoje lê; subir é na interface) |
+| GBP | ⛔ **não tem API de produto.** Fluxo escrito, automação não existe |
+| LinkedIn | 🚧 depois (API separada, coletor novo) |
+| Quebra por posicionamento no ETL | 🚧 depois |
 
 ## Os agentes
 

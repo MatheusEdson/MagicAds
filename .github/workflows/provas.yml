@@ -57,3 +57,18 @@ jobs:
             python -m magicads subir "$r"
             echo "::endgroup::"
           done
+
+  agentes:
+    name: os agentes nao citam comando inexistente
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # PyYAML NAO e dependencia do MagicAds -- ele roda sem instalar nada. E
+      # dependencia DESTE job, so pra validar o bloco yaml dos agentes. Bloco
+      # invalido e ignorado em silencio por quem le, e ai o agente sobe sem
+      # nenhuma das regras que voce escreveu.
+      - run: python -m pip install --quiet pyyaml
+      - run: python -m unittest tests.test_agentes -v
