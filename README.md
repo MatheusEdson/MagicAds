@@ -188,7 +188,7 @@ Detalhe em [SECURITY.md](SECURITY.md). O resumo:
 6. `./scripts/scrub.sh` antes de todo push, e tem hook em `scripts/hooks/pre-push` pra não depender da sua memória.
 
 ```bash
-python -m unittest discover -s tests   # 88 testes, stdlib, sem instalar nada
+python -m unittest discover -s tests   # 93 testes, stdlib, sem instalar nada
 ./scripts/scrub.sh
 ```
 
@@ -202,7 +202,7 @@ copia não desconfia.
 | Parte | Estado |
 |---|---|
 | `init`, `cliente`, `conta` — a carteira | ✅ funciona |
-| `diag` — os 6 portões | ✅ funciona |
+| `diag` — os 6 portões | ✅ funciona, **provado em conta real (22 contas)** |
 | `subir` + receitas por tipo de conta | ✅ funciona |
 | `get`, `post`, `pausar`, `ativar`, `imagem` | ✅ funciona |
 | `pausar --tudo` — freio geral | ✅ funciona |

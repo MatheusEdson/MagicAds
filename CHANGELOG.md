@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.3.0 — 2026-09-14
+
+Primeira rodada **contra conta real** (22 contas, só leitura). Achou dois bugs
+que nenhum teste com API de mentira acharia, porque os dois dependem do formato
+que a Meta devolve de verdade.
+
+### Corrigido
+
+- **O ETL contava o mesmo lead duas vezes.** A Meta reporta o mesmo resultado em
+  mais de um `action_type`: `lead` é o total de Leads e **já inclui** o do pixel
+  e o do formulário. O parser somava os três.
+  - Visto ao vivo: uma linha com `lead=1` e
+    `offsite_conversion.fb_pixel_lead=1` — o mesmo lead, contado como dois.
+  - É o jeito mais caro de errar: resultado inflado **divide o custo**, então um
+    lead de R$ 100 aparece como dois de R$ 50 e você escala o que não estava
+    funcionando. Na conta testada, o custo por resultado dobrou depois do
+    conserto.
+  - Agora existem **famílias**: dentro de cada uma o agregado manda e os
+    específicos só entram se ele não veio; entre famílias (lead × compra) soma
+    normal. Cinco testes de regressão, incluindo o caso real.
+
+- **O `diag` dava "página FALTA" com dez páginas na mão.** Ele lia página só
+  pelas bordas do portfólio (`owned_pages`/`client_pages`). Um system user que
+  opera o BM do *cliente* sem ser admin de lá recebe **lista vazia** nessas
+  bordas — 200 com `data:[]`, não erro. Ao vivo: 28 bordas devolveram zero
+  enquanto `me/assigned_pages` devolvia 10 páginas usáveis. Agora usa as duas
+  fontes, deduplica, e diz de onde veio cada uma.
+
+### Mudou
+
+- **O veredito do `diag` agora conta.** Com token de frota, "forma de pagamento:
+  OK" bastava **uma** conta ter forma de pagamento para a linha ficar verde. Na
+  conta real isso escondia que só **11 de 22** estavam prontas para subir. As
+  linhas passam a mostrar `OK (11 de 22)` e há uma linha própria de
+  `contas prontas p/ subir`.
+- A sonda de WhatsApp agora escolhe uma página **com `MESSAGING`** e uma conta
+  que realmente pode criar. Pendurada na página errada, ela devolvia outro erro
+  e você concluía a coisa errada sobre o WhatsApp.
+- 93 testes (eram 88).
+
 ## 1.2.0 — 2026-09-14
 
 O elo que faltava: os agentes tinham **doutrina** e nenhum **contrato com a
