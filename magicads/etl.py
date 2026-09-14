@@ -9,11 +9,11 @@ db/schema.sql e pode rodar quantas vezes quiser no mesmo dia: a chave primaria
 existe controle de "ja rodei hoje" pra dar errado.
 
 SEGURANCA (o que o codigo garante sozinho)
-1. Segredo so vem de variavel de ambiente. Nada de arquivo de credencial no
+1. Segredo so vem de variavel de ambiente ou do cofre. Nada de credencial no
    repo, nada de valor embutido.
-2. Nenhum segredo e impresso. Todo print passa por `limpa()`, que troca
-   qualquer valor secreto conhecido por <SEGREDO>. Erro de API ecoa parametro,
-   e e assim que token vaza em log.
+2. Nenhum segredo e impresso: tudo passa pelo `limpa()` de comum.py, que e o
+   UNICO filtro do projeto. Dois filtros parecem redundancia e sao a chance de
+   um deles ficar pra tras quando a regra mudar.
 3. A carteira mora no BANCO, nao num arquivo versionado. Arquivo de carteira
    vira dado de cliente dentro do git, e alem disso apodrece: cliente que
    churna continua aparecendo e cliente novo demora a entrar.
@@ -36,18 +36,13 @@ USO
 import json
 import os
 import sys
-import time
-import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, timedelta
 
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
-    pass
+from .banco import Banco
+from .comum import META_VER, diz, env, guarda_segredo, http
 
-META_VER = os.environ.get("MAGICADS_API_VERSION", "v25.0")
 GADS_VER = os.environ.get("MAGICADS_GADS_VERSION", "v25")
 
 # Meta: primeiro toma esses tres action_types como "conversa".
@@ -67,151 +62,6 @@ DIAS_ATE_ESQUECER = 35
 
 FALHAS = []
 MUDAS = []
-
-
-# ---------------------------------------------------------------------------
-# segredo: entra por env, nunca sai por print
-# ---------------------------------------------------------------------------
-SEGREDOS = []
-
-
-def env(nome, obrigatorio=False, segredo=True):
-    v = os.environ.get(nome, "")
-    if obrigatorio and not v:
-        sys.exit("falta a variavel de ambiente %s (veja o docstring de etl.py)" % nome)
-    if v and segredo and len(v) > 8:
-        SEGREDOS.append(v)
-    return v
-
-
-def limpa(s):
-    """Ultima linha de defesa. Nenhum segredo sai daqui, nem dentro de erro."""
-    s = str(s)
-    for v in SEGREDOS:
-        if v and v in s:
-            s = s.replace(v, "<SEGREDO>")
-    return s
-
-
-def diz(*partes):
-    print(limpa(" ".join(str(p) for p in partes)))
-
-
-# ---------------------------------------------------------------------------
-# http com retry: API de anuncio cai sozinha o tempo todo
-# ---------------------------------------------------------------------------
-def http(url, data=None, headers=None, method=None, tentativas=3):
-    for n in range(tentativas):
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(data).encode() if data is not None else None,
-                headers=headers or {},
-                method=method,
-            )
-            with urllib.request.urlopen(req, timeout=90) as r:
-                corpo = r.read()
-                return json.loads(corpo) if corpo else {}
-        except urllib.error.HTTPError as e:
-            corpo = e.read().decode()[:300]
-            if e.code in (429, 500, 503) and n < tentativas - 1:
-                time.sleep(3 * (n + 1))
-                continue
-            raise RuntimeError(limpa("HTTP %s: %s" % (e.code, corpo)))
-        except Exception as e:
-            if n < tentativas - 1:
-                time.sleep(3 * (n + 1))
-                continue
-            raise RuntimeError(limpa(str(e)[:200]))
-
-
-# ---------------------------------------------------------------------------
-# armazenamento: PostgREST (Supabase) ou Postgres direto
-# ---------------------------------------------------------------------------
-class Banco(object):
-    """Duas implementacoes, uma costura so.
-
-    O caminho Supabase nao precisa de nada instalado (PostgREST e HTTP).
-    O caminho Postgres direto usa psycopg2, importado aqui dentro justamente
-    pra quem usa Supabase nao precisar instalar.
-    """
-
-    def __init__(self):
-        self.supa_url = env("MAGICADS_SUPABASE_URL", segredo=False).rstrip("/")
-        self.supa_key = env("MAGICADS_SUPABASE_KEY")
-        self.dsn = env("DATABASE_URL")
-        if not self.supa_url and not self.dsn:
-            sys.exit("defina MAGICADS_SUPABASE_URL + MAGICADS_SUPABASE_KEY, ou DATABASE_URL")
-        self.modo = "supabase" if self.supa_url else "postgres"
-
-    # -- leitura --------------------------------------------------------
-    def carteira(self):
-        """(slug, nome, canal, account_id). Fonte de verdade = banco."""
-        if self.modo == "supabase":
-            linhas = self._rest("contas?select=canal,account_id,cliente_slug,nome,ativo"
-                                "&ativo=is.true&order=cliente_slug")
-            return [(l["cliente_slug"], l.get("nome") or l["cliente_slug"],
-                     l["canal"], l["account_id"]) for l in linhas]
-        return self._sql(
-            "select cliente_slug, coalesce(nome, cliente_slug), canal, account_id "
-            "from contas where ativo order by cliente_slug")
-
-    def ultimo_dia_por_conta(self):
-        """Pra separar conta que EMUDECEU de conta que nunca teve dado."""
-        if self.modo == "supabase":
-            linhas = self._rest("metricas?select=canal,account_id,data&order=data.desc&limit=20000")
-            visto = {}
-            for l in linhas:
-                chave = (l["canal"], l["account_id"])
-                if chave not in visto or l["data"] > visto[chave]:
-                    visto[chave] = l["data"]
-            return visto
-        return {(c, a): str(d) for c, a, d in self._sql(
-            "select canal, account_id, max(data) from metricas group by canal, account_id")}
-
-    # -- escrita --------------------------------------------------------
-    def grava_metricas(self, linhas):
-        if not linhas:
-            return 0
-        if self.modo == "supabase":
-            self._rest("metricas?on_conflict=canal,account_id,data,campanha,criativo_id",
-                       linhas, "POST", "resolution=merge-duplicates,return=minimal")
-            return len(linhas)
-        colunas = ("canal", "account_id", "data", "campanha", "criativo_id", "cliente_slug",
-                   "investimento", "impressoes", "cliques", "conversas", "conversoes")
-        valores = [tuple(l[c] for c in colunas) for l in linhas]
-        marcas = "(" + ",".join(["%s"] * len(colunas)) + ")"
-        sql = ("insert into metricas (%s) values %s "
-               "on conflict (canal, account_id, data, campanha, criativo_id) do update set "
-               "investimento = excluded.investimento, impressoes = excluded.impressoes, "
-               "cliques = excluded.cliques, conversas = excluded.conversas, "
-               "conversoes = excluded.conversoes, atualizado_em = now()"
-               % (",".join(colunas), ",".join([marcas] * len(valores))))
-        chatos = [v for linha in valores for v in linha]
-        self._sql(sql, chatos, escreve=True)
-        return len(linhas)
-
-    # -- motores --------------------------------------------------------
-    def _rest(self, caminho, data=None, method="GET", prefer=None):
-        h = {"apikey": self.supa_key, "Authorization": "Bearer %s" % self.supa_key,
-             "Content-Type": "application/json"}
-        if prefer:
-            h["Prefer"] = prefer
-        return http("%s/rest/v1/%s" % (self.supa_url, caminho), data=data,
-                    headers=h, method=method)
-
-    def _sql(self, sql, args=None, escreve=False):
-        try:
-            import psycopg2
-        except ImportError:
-            sys.exit("DATABASE_URL exige psycopg2: pip install psycopg2-binary\n"
-                     "(ou use MAGICADS_SUPABASE_URL, que nao precisa de nada instalado)")
-        with psycopg2.connect(self.dsn) as con:
-            with con.cursor() as cur:
-                cur.execute(sql, args)
-                if escreve:
-                    return []
-                return cur.fetchall()
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +103,7 @@ def token_do_cliente(slug):
         from .cli import token as token_do_cofre
         _, tok = token_do_cofre(slug)
         if tok:
-            SEGREDOS.append(tok)
+            guarda_segredo(tok)
         return tok
     except SystemExit:
         return None
@@ -334,7 +184,7 @@ def token_google():
         headers={"Content-Type": "application/x-www-form-urlencoded"})
     with urllib.request.urlopen(req, timeout=60) as r:
         at = json.loads(r.read())["access_token"]
-    SEGREDOS.append(at)
+    guarda_segredo(at)
     return at
 
 

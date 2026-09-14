@@ -1,0 +1,41 @@
+{
+  "_leia": "Balcao / delivery / alimentacao. Ciclo de minutos: a decisao acontece com fome, perto, agora. Agente: gandalf-balcao.",
+  "_atencao": "aqui NAO se otimiza por conversao: o pedido acontece fora do pixel (no balcao, no app do ifood, no zap). Otimizar por um evento que quase nao dispara trava a campanha no aprendizado pra sempre. Compre clique/alcance e meca no caixa.",
+
+  "tipo": "balcao",
+  "cliente": "acme",
+  "conta": "act_000000000000002",
+  "pagina": "000000000000001",
+
+  "campanha": {
+    "nome": "[C01] Balcao · trafego · raio curto",
+    "categorias_especiais": []
+  },
+
+  "conjunto": {
+    "nome": "[A01] raio 4km · 18-65 · 17h-22h",
+    "verba_diaria": 1500,
+    "idade": [18, 65],
+    "geo": {
+      "geo_locations": {
+        "custom_locations": [
+          { "latitude": -18.918, "longitude": -48.277, "radius": 4, "distance_unit": "kilometer" }
+        ]
+      }
+    },
+    "advantage_audience": 1,
+    "_raio": "4km e proposital. Raio grande em delivery compra gente que nao vai esperar o motoboy."
+  },
+
+  "anuncios": [
+    {
+      "nome": "[AD01] foto do produto · preco · pedir",
+      "titulo": "Pedido em 30 minutos",
+      "texto": "Combo do dia saindo agora. Peca pelo link ou chama no balcao.",
+      "descricao": "Entrega no bairro",
+      "cta": "ORDER_NOW",
+      "link": "https://exemplo.com.br/cardapio?utm_source=meta&utm_medium=paid&utm_campaign=c01",
+      "imagem_hash": "00000000000000000000000000000000"
+    }
+  ]
+}

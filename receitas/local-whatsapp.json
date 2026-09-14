@@ -1,0 +1,40 @@
+{
+  "_leia": "Servico local. Conversa no WhatsApp (CTWA). Agente: gandalf-local.",
+  "_atencao": "o numero do WhatsApp NAO vai no criativo: ele mora no promoted_object, junto da Pagina. E a Pagina precisa ter conta de WhatsApp conectada -- nenhuma leitura da API mostra isso, so o POST do conjunto (subcode 2446886). Rode `diag` antes.",
+
+  "tipo": "local-whatsapp",
+  "cliente": "acme",
+  "conta": "act_000000000000002",
+  "pagina": "000000000000001",
+
+  "campanha": {
+    "nome": "[C01] Local · conversa · WhatsApp",
+    "categorias_especiais": []
+  },
+
+  "conjunto": {
+    "nome": "[A01] raio 10km · 25-55",
+    "verba_diaria": 3000,
+    "idade": [25, 55],
+    "geo": {
+      "geo_locations": {
+        "custom_locations": [
+          { "latitude": -18.918, "longitude": -48.277, "radius": 10, "distance_unit": "kilometer" }
+        ]
+      }
+    },
+    "advantage_audience": 1,
+    "_porque_advantage_um": "servico local vive de volume de conversa e o raio ja e o filtro forte. Aqui deixar a Meta abrir costuma baixar o custo por conversa."
+  },
+
+  "anuncios": [
+    {
+      "nome": "[AD01] oferta direta · chamar no zap",
+      "titulo": "Atendimento hoje mesmo",
+      "texto": "Chama no WhatsApp e a gente ja te passa prazo e valor. Sem formulario, sem espera.",
+      "descricao": "Seg a sab",
+      "cta": "WHATSAPP_MESSAGE",
+      "imagem_hash": "00000000000000000000000000000000"
+    }
+  ]
+}

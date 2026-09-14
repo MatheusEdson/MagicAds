@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""MagicAds: fala com a Graph API usando o token de System User do cliente.
+"""MagicAds: opera Meta Ads com o SEU app e o SEU token de System User.
 
 POR QUE ISSO EXISTE
 O MCP oficial de ads fala com a identidade de quem conectou. Quando a conta nao
@@ -9,25 +9,41 @@ e "nao vejo". Este CLI fala com o token do System User que voce escolher, e por
 isso enxerga o que a outra identidade nao enxerga.
 
 REGRAS QUE O CODIGO APLICA SOZINHO
-1. O token NUNCA e impresso. Se aparecer em qualquer saida, vira <TOKEN> --
+1. O token NUNCA e impresso. Se aparecer em qualquer saida, vira <SEGREDO> --
    inclusive dentro de mensagem de erro (a Meta ecoa parametro, e e assim que
-   token vaza em log).
-2. `post` roda em modo VALIDACAO por padrao: a Meta confere e NAO cria. Pra
-   valer de verdade exige `--executar` explicito.
+   token vaza em log). O filtro e UM so, em comum.py.
+2. `post` e `subir` rodam em modo VALIDACAO/ENSAIO por padrao. Pra valer de
+   verdade exige `--executar` explicito.
 3. `pausar` executa direto, sem cerimonia. Freio que exige confirmacao e freio
    que nao se usa na hora do aperto.
 4. Cofre em ~/.magicads/tokens, um arquivo por cliente, chmod 600.
 
+O CICLO COMPLETO
+  init                       prepara cofre e banco, e diz o que falta
+  cliente / conta            a carteira (mora no banco, nao em arquivo)
+  diag <cliente>             os 6 portoes, antes de perder a tarde
+  subir <receita.json>       campanha + conjunto + criativo + anuncio
+  etl --dias 7               enche a serie
+  relatorio                  le a serie em formato de decisao
+  pausar / ativar            o freio e o acelerador
+
 USO
+  python -m magicads init
   python -m magicads clientes
-  python -m magicads diag <cliente>
-  python -m magicads get  <cliente> me/adaccounts fields=name,account_status
-  python -m magicads get  <cliente> act_123/campaigns fields=name,status,objective
-  python -m magicads post <cliente> act_123/campaigns name=[C01] objective=OUTCOME_LEADS
-  python -m magicads post <cliente> act_123/campaigns name=[C01] ... --executar
-  python -m magicads pausar <cliente> 120xxxxxxxx
-  python -m magicads ativar <cliente> 120xxxxxxxx --executar
-  python -m magicads etl --dias 7          (ver docstring de etl.py)
+  python -m magicads cliente acme "Acme Pneus" --nicho auto --cidade Uberlandia
+  python -m magicads conta acme meta act_000000000000000 "Acme - Meta"
+  python -m magicads diag acme
+  python -m magicads get  acme me/adaccounts fields=name,account_status
+  python -m magicads post acme act_123/campaigns name=[C01] objective=OUTCOME_LEADS
+  python -m magicads imagem acme act_123 criativo.jpg
+  python -m magicads subir receitas/local-whatsapp.json
+  python -m magicads subir receitas/local-whatsapp.json --executar
+  python -m magicads etl --dias 7
+  python -m magicads relatorio
+  python -m magicads relatorio acme --dias 14
+  python -m magicads relatorio --mudas
+  python -m magicads pausar acme 120xxxxxxxx
+  python -m magicads ativar acme 120xxxxxxxx --executar
 """
 import json
 import os
@@ -37,12 +53,9 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
-    pass
+from .comum import GRAPH as API
+from .comum import guarda_segredo, limpa
 
-API = "https://graph.facebook.com/" + os.environ.get("MAGICADS_API_VERSION", "v25.0")
 COFRE = Path(os.environ.get("MAGICADS_COFRE", os.path.expanduser("~/.magicads/tokens")))
 Q1 = chr(39)
 
@@ -64,7 +77,11 @@ def cofre_arquivos():
 
 
 def token(cliente):
-    """Resolve cliente -> token. Aceita apelido por prefixo, pra nao decorar nome."""
+    """Resolve cliente -> (nome, token). Aceita apelido por prefixo.
+
+    O token sai daqui JA registrado no filtro de segredo: quem chama nao
+    precisa lembrar de proteger, e por isso nao tem como esquecer.
+    """
     arqs = cofre_arquivos()
     alvo = [p for p in arqs if p.stem == cliente]
     if not alvo:
@@ -81,19 +98,16 @@ def token(cliente):
         if linha and not linha.startswith("#") and "=" in linha:
             k, v = linha.split("=", 1)
             if k.strip().upper().endswith("_META_TOKEN"):
-                return p.stem, v.strip().strip('"').strip(Q1)
+                return p.stem, guarda_segredo(v.strip().strip('"').strip(Q1))
     sys.exit("%s nao tem chave terminando em _META_TOKEN" % p.name)
 
 
 TOK_ATUAL = [""]
 
 
-def limpa(s):
-    """Ultima linha de defesa: nenhum token sai daqui, nem dentro de erro."""
-    t = TOK_ATUAL[0]
-    if t and t in s:
-        s = s.replace(t, "<TOKEN>")
-    return s
+def usa(tok):
+    """Escolhe com qual token as proximas chamadas falam."""
+    TOK_ATUAL[0] = guarda_segredo(tok) or ""
 
 
 # ---------------------------------------------------------------------------
@@ -141,9 +155,8 @@ def cmd_clientes():
     print("-" * 84)
     for p in arqs:
         nome = p.stem
-        TOK_ATUAL[0] = ""
         _, tok = token(nome)
-        TOK_ATUAL[0] = tok
+        usa(tok)
         d, e = chamada("GET", "me", {"fields": "id,name"})
         if e:
             print("  XX %-22s TOKEN MORTO  %s" % (nome, erro_legivel(e)[:70]))
@@ -160,7 +173,7 @@ def cmd_clientes():
 def cmd_diag(cliente):
     """Os 6 portoes. Cinco deles nao aparecem antes de voce tentar subir."""
     nome, tok = token(cliente)
-    TOK_ATUAL[0] = tok
+    usa(tok)
     print("=" * 92)
     print("DIAGNOSTICO  ·  %s  ·  identidade = token do cofre  ·  so leitura" % nome)
     print("=" * 92)
@@ -310,7 +323,7 @@ def cmd_chamada(metodo, argv):
         k, v = a.split("=", 1)
         campos[k] = v
     nome, tok = token(cliente)
-    TOK_ATUAL[0] = tok
+    usa(tok)
 
     if metodo == "POST" and not executar:
         campos["execution_options"] = json.dumps(["validate_only"])
@@ -340,7 +353,7 @@ def cmd_status(argv, novo):
                  % ("pausar" if novo == "PAUSED" else "ativar"))
     cliente, alvo = argv[0], argv[1]
     nome, tok = token(cliente)
-    TOK_ATUAL[0] = tok
+    usa(tok)
 
     if novo == "ACTIVE" and "--executar" not in argv:
         print("ativar %s religa o gasto. Repita com --executar." % alvo)
@@ -359,28 +372,170 @@ def cmd_status(argv, novo):
         print("conferido: %s" % limpa(json.dumps(v, ensure_ascii=False)))
 
 
+def cmd_init():
+    """Prepara o terreno e, principalmente, DIZ O QUE FALTA.
+
+    Setup que falha calado e a razao de metade das tardes perdidas: voce
+    descobre que o banco nao tinha tabela quando o ETL ja rodou 20 contas.
+    """
+    from .banco import Banco, onde_escrevo
+
+    print("=" * 72)
+    print("INIT")
+    print("=" * 72)
+
+    print("\n1. cofre de tokens")
+    if COFRE.exists():
+        arqs = sorted(COFRE.glob("*.env"))
+        print("   ok  %s  |  %d cliente(s): %s"
+              % (COFRE, len(arqs), ", ".join(p.stem for p in arqs) or "nenhum ainda"))
+        if not arqs:
+            print("   crie um: printf 'ACME_META_TOKEN=EAA...' > %s/acme.env" % COFRE)
+    else:
+        COFRE.mkdir(parents=True, exist_ok=True)
+        if os.name != "nt":
+            os.chmod(str(COFRE), 0o700)
+        print("   criei %s (700). Ponha um arquivo .env por cliente, cada um 600." % COFRE)
+
+    print("\n2. banco")
+    banco = Banco(exigir=False)
+    if not banco.modo:
+        print("   FALTA. Defina MAGICADS_SUPABASE_URL + MAGICADS_SUPABASE_KEY,")
+        print("   ou DATABASE_URL. Sem banco nao ha serie, e sem serie nao ha decisao.")
+        return 1
+    print("   %s" % onde_escrevo())
+
+    if banco.existe_schema():
+        print("   ok  as tabelas existem")
+    else:
+        print("   as 4 tabelas nao existem ainda. Aplicando db/schema.sql...")
+        if banco.aplica_schema():
+            print("   ok  schema aplicado")
+        else:
+            return 1
+
+    print("\n3. carteira")
+    try:
+        contas = banco.carteira()
+    except Exception as e:
+        print("   nao consegui ler: %s" % limpa(e))
+        return 1
+    if contas:
+        print("   ok  %d conta(s) ativa(s)" % len(contas))
+        for slug, nome, canal, cid in contas[:10]:
+            print("       %-8s %-22s %s" % (canal, nome[:22], slug))
+    else:
+        print("   vazia. Cadastre:")
+        print("       python -m magicads cliente acme \"Acme Pneus\"")
+        print("       python -m magicads conta acme meta act_000000000000000")
+
+    print("\n" + "=" * 72)
+    print("proximo passo: python -m magicads diag <cliente>")
+    return 0
+
+
+def cmd_cliente(argv):
+    """Sem argumento, lista. Com argumento, cria ou atualiza."""
+    from .banco import Banco
+    banco = Banco()
+    if not argv:
+        linhas = banco.clientes()
+        if not linhas:
+            print("nenhum cliente. Cadastre: python -m magicads cliente acme \"Acme Pneus\"")
+            return 0
+        print("%-16s %-28s %-14s %-14s %s" % ("slug", "nome", "nicho", "cidade", "ativo"))
+        print("-" * 80)
+        for slug, nome, nicho, cidade, ativo in linhas:
+            print("%-16s %-28s %-14s %-14s %s"
+                  % (slug, (nome or "")[:28], nicho or "", cidade or "",
+                     "sim" if ativo else "NAO"))
+        return 0
+
+    slug = argv[0]
+    nome = argv[1] if len(argv) > 1 and not argv[1].startswith("--") else slug
+    nicho = cidade = None
+    for i, a in enumerate(argv):
+        if a == "--nicho" and i + 1 < len(argv):
+            nicho = argv[i + 1]
+        if a == "--cidade" and i + 1 < len(argv):
+            cidade = argv[i + 1]
+    banco.cliente_salva(slug, nome, nicho, cidade)
+    print("cliente %s (%s) salvo." % (slug, nome))
+    print("agora a conta: python -m magicads conta %s meta act_..." % slug)
+    return 0
+
+
+def cmd_conta(argv):
+    """Liga uma conta de anuncio a um cliente. `--remover` desativa sem apagar.
+
+    Desativar em vez de deletar e de proposito: a metrica historica dela
+    continua valendo, e sumir com a conta apagaria a comparacao com o periodo
+    anterior no relatorio.
+    """
+    from .banco import Banco
+    banco = Banco()
+    if not argv:
+        for slug, nome, canal, cid in banco.carteira():
+            print("%-8s %-20s %-24s %s" % (canal, slug, cid, nome))
+        return 0
+    if len(argv) < 3:
+        sys.exit("uso: python -m magicads conta <cliente> <meta|google> <id> [nome] [--remover]")
+    slug, canal, cid = argv[0], argv[1], argv[2]
+    if canal not in ("meta", "google"):
+        sys.exit("canal tem que ser `meta` ou `google` (veio %r)" % canal)
+    if canal == "meta" and not cid.startswith("act_"):
+        cid = "act_%s" % cid
+    if "--remover" in argv:
+        banco.conta_desativa(canal, cid)
+        print("%s %s desativada. O historico dela continua no banco." % (canal, cid))
+        return 0
+    nome = argv[3] if len(argv) > 3 and not argv[3].startswith("--") else None
+    banco.conta_salva(canal, cid, slug, nome)
+    print("%s %s -> %s" % (canal, cid, slug))
+    print("confira o acesso: python -m magicads diag %s" % slug)
+    return 0
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
         return
-    c = sys.argv[1]
-    if c == "clientes":
+    c, resto = sys.argv[1], sys.argv[2:]
+    if c in ("-h", "--help", "help"):
+        print(__doc__)
+        return
+    if c == "init":
+        sys.exit(cmd_init())
+    elif c == "clientes":
         cmd_clientes()
+    elif c == "cliente":
+        sys.exit(cmd_cliente(resto))
+    elif c == "conta":
+        sys.exit(cmd_conta(resto))
     elif c == "diag":
-        if len(sys.argv) < 3:
+        if not resto:
             sys.exit("uso: python -m magicads diag <cliente>")
-        cmd_diag(sys.argv[2])
+        cmd_diag(resto[0])
     elif c == "get":
-        cmd_chamada("GET", sys.argv[2:])
+        cmd_chamada("GET", resto)
     elif c == "post":
-        cmd_chamada("POST", sys.argv[2:])
+        cmd_chamada("POST", resto)
     elif c == "pausar":
-        cmd_status(sys.argv[2:], "PAUSED")
+        cmd_status(resto, "PAUSED")
     elif c == "ativar":
-        cmd_status(sys.argv[2:], "ACTIVE")
+        cmd_status(resto, "ACTIVE")
+    elif c == "subir":
+        from . import subir
+        sys.exit(subir.main(resto))
+    elif c == "imagem":
+        from . import subir
+        sys.exit(subir.sobe_imagem(resto))
     elif c == "etl":
         from . import etl
-        sys.exit(etl.main(sys.argv[2:]))
+        sys.exit(etl.main(resto))
+    elif c == "relatorio":
+        from . import relatorio
+        sys.exit(relatorio.main(resto))
     else:
         print(__doc__)
         sys.exit("comando desconhecido: %r" % c)

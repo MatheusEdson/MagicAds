@@ -1,0 +1,35 @@
+{
+  "_leia": "B2B / alto ticket. Lead por FORMULARIO INSTANTANEO. Troque os ids por zeros pelos seus. O formulario ja tem que existir na Pagina: a API sobe o anuncio, nao cria o formulario. Agente: gandalf-b2b.",
+  "_atencao": "formulario instantaneo com leads_retrieval exige Verificacao da Empresa. Sem ela voce sobe o anuncio e colhe o lead na mao, pelo Gerenciador. Ver docs/04-quando-trava.md.",
+
+  "tipo": "b2b",
+  "cliente": "acme",
+  "conta": "act_000000000000002",
+  "pagina": "000000000000001",
+
+  "campanha": {
+    "nome": "[C01] B2B · lead · formulario",
+    "categorias_especiais": []
+  },
+
+  "conjunto": {
+    "nome": "[A01] cargo + interesse · BR · 25-54",
+    "verba_diaria": 5000,
+    "idade": [25, 54],
+    "geo": { "geo_locations": { "countries": ["BR"] } },
+    "advantage_audience": 0,
+    "_porque_advantage_zero": "em publico pequeno e especifico, advantage_audience:1 torna a demografia DECORATIVA: a Meta entrega fora da faixa que voce travou. Em B2B isso queima verba em quem nao decide."
+  },
+
+  "anuncios": [
+    {
+      "nome": "[AD01] dor · prova · convite",
+      "titulo": "Diagnostico gratuito em 20 minutos",
+      "texto": "Sua operacao perde receita em algum ponto do funil e voce ainda nao sabe qual. Em 20 minutos a gente aponta onde.",
+      "descricao": "Agenda limitada",
+      "cta": "SIGN_UP",
+      "formulario_id": "000000000000004",
+      "imagem_hash": "00000000000000000000000000000000"
+    }
+  ]
+}

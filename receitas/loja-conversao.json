@@ -1,0 +1,38 @@
+{
+  "_leia": "Loja / e-commerce. Compra medida por pixel. Agente: gandalf-loja.",
+  "_atencao": "o EVENTO de otimizacao e o volante: `evento` manda mais na entrega do que o publico. Otimizar por ADD_TO_CART enche o relatorio e nao enche o caixa -- so desca do PURCHASE se a conta nao tiver volume (piso ~10 conversoes/semana pra Meta sair do aprendizado).",
+
+  "tipo": "loja",
+  "cliente": "acme",
+  "conta": "act_000000000000002",
+  "pagina": "000000000000001",
+  "pixel": "000000000000003",
+  "evento": "PURCHASE",
+
+  "campanha": {
+    "nome": "[C01] Loja · vendas · frio",
+    "categorias_especiais": []
+  },
+
+  "conjunto": {
+    "nome": "[A01] aberto BR · exclui compradores 30d",
+    "verba_diaria": 8000,
+    "idade": [18, 65],
+    "geo": { "geo_locations": { "countries": ["BR"] } },
+    "publicos_excluir": [],
+    "_publicos_excluir": "ponha aqui o id do publico de compradores dos ultimos 30 dias. Campanha de aquisicao que nao exclui quem ja comprou compra o mesmo cliente duas vezes e chama isso de ROAS.",
+    "advantage_audience": 1
+  },
+
+  "anuncios": [
+    {
+      "nome": "[AD01] produto · beneficio · prova",
+      "titulo": "Frete gratis acima de R$199",
+      "texto": "O que mais sai da loja esta em estoque. Entrega em ate 5 dias uteis.",
+      "descricao": "Compre agora",
+      "cta": "SHOP_NOW",
+      "link": "https://exemplo.com.br/colecao?utm_source=meta&utm_medium=paid&utm_campaign=c01&utm_content=ad01",
+      "imagem_hash": "00000000000000000000000000000000"
+    }
+  ]
+}
